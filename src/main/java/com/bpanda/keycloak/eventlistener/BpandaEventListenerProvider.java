@@ -9,10 +9,7 @@ import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserModel;
+import org.keycloak.models.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,18 +54,24 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                         break;
                     case LOGIN:
                         try {
-                            ZonedDateTime zdt = ZonedDateTime.now(ZoneOffset.UTC);
-                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmms.'0'X");
-                            user.setSingleAttribute("lastLoginTimestamp", zdt.format(formatter));
+                            setUserTimeStamp(user, "lastLoginTimestamp");
                         } catch (DateTimeException ex)  {
                             ex.printStackTrace();
-                            user.setSingleAttribute("lastLoginTimestamp", DateTimeFormatter.ISO_INSTANT.format(ZonedDateTime.now()));
                         }
+                        break;
+                    case LOGIN_ERROR:
+                        try {
+                            setUserTimeStamp(user, "lastLoginFailureTimestamp");
+                        } catch (DateTimeException ex)  {
+                            ex.printStackTrace();
+                        }
+                        break;
                 }
             }
         }
         System.out.println("Event Occurred:" + toString(event));
     }
+
 
     @Override
     public void onEvent(AdminEvent adminEvent, boolean b) {
@@ -155,6 +158,10 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 adminEvent.getResourceType() +
                 ", realmId=" +
                 adminEvent.getRealmId();
+    }
+
+    private void setUserTimeStamp(UserModel user, String timestampName) {
+        user.setSingleAttribute(timestampName,  ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
     }
 
     private String toString(Event event) {
