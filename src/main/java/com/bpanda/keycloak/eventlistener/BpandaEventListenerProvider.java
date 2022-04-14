@@ -35,22 +35,20 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
     private final KafkaAdapter kafkaAdapter;
     private final KeycloakSession keycloakSession;
-    private final String campServer;
-    private String accountId;
     private int eventCount = 0;
 
-    public BpandaEventListenerProvider(KafkaProducer producer, String campServer, KeycloakSession keycloakSession) {
+    public BpandaEventListenerProvider(KafkaProducer producer, KeycloakSession keycloakSession) {
         this.kafkaAdapter = new KafkaAdapter(producer);
-        this.campServer = campServer;
         this.keycloakSession = keycloakSession;
     }
 
     @Override
     public void onEvent(Event event) {
-        log.info("KeycloakUserEvent:" + event.getType() + ":" + event.getClientId());
+        log.info(String.format("KeycloakUserEvent:%s:%s", event.getType(), event.getClientId()));
         eventCount++;
         String userId = event.getUserId();
         EventType eventType = event.getType();
+        boolean handled = false;
         if (userId != null) {
             RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
             UserModel user = keycloakSession.users().getUserById(userId, realm);
@@ -58,6 +56,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 switch (eventType) {
                     case RESET_PASSWORD:
                         user.setSingleAttribute("registered", "true");
+                        handled = true;
                         break;
                     case UPDATE_PROFILE:
                     case CUSTOM_REQUIRED_ACTION:
@@ -66,12 +65,13 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                                 .setElementType(EventMessages.ElementTypes.ELEMENT_USER_IDS)
                                 .setValue(userId)
                                 .build();
-
                         kafkaAdapter.send(realm.getId(), "users.updated", EventMessages.EventTypes.EVENT_CAM_USERS_CHANGED, affectedElement );
+                        handled = true;
                         break;
                     case LOGIN:
                         try {
                             setUserTimeStamp(user, "lastLoginTimestamp");
+                            handled = true;
                         } catch (DateTimeException ex)  {
                             ex.printStackTrace();
                         }
@@ -79,6 +79,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                     case LOGIN_ERROR:
                         try {
                             setUserTimeStamp(user, "lastLoginFailureTimestamp");
+                            handled = true;
                         } catch (DateTimeException ex)  {
                             ex.printStackTrace();
                         }
@@ -86,15 +87,15 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
             }
         }
-        System.out.println("Event Occurred:" + toString(event));
+        log.info(String.format("Event Occurred:%s handled: %s", toString(event), handled));
     }
 
 
     @Override
     public void onEvent(AdminEvent adminEvent, boolean b) {
         eventCount++;
-        if (null == this.campServer && !this.kafkaAdapter.isValid()) {
-            log.error("camp server and produce not set");
+        if (!this.kafkaAdapter.isValid()) {
+            log.error("kafka producer not set");
             return;
         }
         String realmId = adminEvent.getRealmId();
@@ -108,41 +109,37 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
         if (null != clientId && null != realm) {
             ClientModel client = realm.getClientById(clientId);
-//            TokenManager tokenManager = keycloakSession.tokens();
             if (client == null) {
                 clientId = DEFAULT_CLIENT_ID;
                 client = realm.getClientByClientId(clientId);
             }
             if (null != client) {
                 clientSecret = client.getSecret();
-                String desc = client.getDescription();
-                if (null != desc && desc.length() > 0) {
-                    accountId = desc;
-                }
+
                 if (null != client.getClientId()) {
                     clientId = client.getClientId();
                 }
-                log.info(("Description" + " " + desc + " RealmId: " + realmId));
+                log.info(("RealmId: " + realmId));
             }
         }
         try {
             OperationType operationType = adminEvent.getOperationType();
             ResourceType resourceType = adminEvent.getResourceType();
             String represantation = adminEvent.getRepresentation();
-            log.error("KeycloakAdminEvent:" + resourceType + ":" + adminEvent.getRealmId());
+            log.error(String.format("KeycloakAdminEvent:%s:%s", resourceType, adminEvent.getRealmId()));
 
             URI url = keycloakSession.getContext().getUri().getRequestUri();
             String protocol = url.getScheme();
             String authority = url.getAuthority();
             String keycloakServer = String.format("%s://%s", protocol, authority);
             KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId, clientId, clientSecret);
-            IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, campServer, accountId, keycloakData, represantation);
+            IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, represantation);
             if (null != keycloakEventHandler && keycloakEventHandler.isValid()) {
                 keycloakEventHandler.handleRequest(keycloakSession);
                 return;
             }
             if (resourceType == ResourceType.GROUP_MEMBERSHIP) {
-                log.error("Groupmembership Operation Type: " + represantation + ":" + represantation);
+                log.error(String.format("Groupmembership Operation Type: %s:%s", represantation, represantation));
                 Group group = Group.getFromResource(represantation);
                 if (group != null) {
                     String externalId = group.getId();
@@ -171,10 +168,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         log.info("close events: " + eventCount);
     }
     private String toString(AdminEvent adminEvent) {
-        return  "type=" +
-                adminEvent.getResourceType() +
-                ", realmId=" +
-                adminEvent.getRealmId();
+        return String.format("type=%s, realmId=%s", adminEvent.getResourceType(), adminEvent.getRealmId());
     }
 
     private void setUserTimeStamp(UserModel user, String timestampName) {

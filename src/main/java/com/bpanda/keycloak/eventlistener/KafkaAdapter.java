@@ -8,7 +8,7 @@ import java.time.Instant;
 
 public class KafkaAdapter {
     private final KafkaProducer producer;
-    private final String baseKafkaTopicName = "de.mid.keycloak.realm.";
+    private static final String baseKafkaTopicName = "de.mid.keycloak.realm.";
 
     // Events Datei wird im Verzeichnis
     // E:\bpanda-backend\modules\libs\event-protobuf\proto
@@ -24,12 +24,16 @@ public class KafkaAdapter {
         if (producer != null) {
             EventMessages.AffectedElement realmData = createAffectedElement(EventMessages.ElementTypes.ELEMENT_REALM_NAME, realmName);
 
-            EventMessages.Event ev = EventMessages.Event.newBuilder()
+            EventMessages.Event.Builder builder = EventMessages.Event.newBuilder()
                     .setEventType(eventType)
                     .setTimestamp(String.valueOf(Instant.now().toEpochMilli()))
-                    .addData(affectedElement)
-                    .addData(realmData)
-                    .build();
+                    .addData(realmData);
+
+            if (affectedElement != null) {
+                builder = builder.addData(affectedElement);
+            }
+
+            EventMessages.Event ev = builder.build();
             ProducerRecord<String, byte[]> record = new ProducerRecord<>(baseKafkaTopicName + realmName, subTopic, ev.toByteArray());
             producer.send(record, (md, ex) -> {
                 if (ex != null) {
@@ -39,26 +43,11 @@ public class KafkaAdapter {
                 } else {
                     System.err.println("Sent msg to " + md.partition() + " with offset " + md.offset() + " at " + md.timestamp());
                 }
-                producer.flush();
             });
+            producer.flush();
         }
     }
 
-//    public void send(EventMessages.Event ev, String realmName, String subTopic) {
-//        if (producer != null) {
-//            ProducerRecord<String, byte[]> record = new ProducerRecord<>(baseKafkaTopicName + realmName, subTopic,  ev.toByteArray());
-//            producer.send(record, (md, ex) -> {
-//                if (ex != null) {
-//                    System.err.println("exception occurred in producer for review :" + ev
-//                            + ", exception is " + ex);
-//                    ex.printStackTrace();
-//                } else {
-//                    System.err.println("Sent msg to " + md.partition() + " with offset " + md.offset() + " at " + md.timestamp());
-//                }
-//                producer.flush();
-//            });
-//        }
-//    }
 
     public EventMessages.AffectedElement createAffectedElement(EventMessages.ElementTypes elementType, String value) {
         return EventMessages.AffectedElement.newBuilder()

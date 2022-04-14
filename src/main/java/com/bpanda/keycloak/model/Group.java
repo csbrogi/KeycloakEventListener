@@ -13,10 +13,10 @@ public class Group {
     private Object attributes;
     private List<GroupMember> members;
 
-    public static Group getFromResource(String represantation) {
+    public static Group getFromResource(String representation) {
         ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         try {
-            return objectMapper.readValue(represantation, Group.class);
+            return objectMapper.readValue(representation, Group.class);
         } catch (IOException e) {
             e.printStackTrace();
         }

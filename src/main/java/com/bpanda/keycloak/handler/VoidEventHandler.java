@@ -27,11 +27,7 @@ public class VoidEventHandler implements IKeycloakEventHandler {
 
     @Override
     public String toString() {
-        return "VoidEventHandler{" +
-                "resourceType=" + resourceType +
-                ", operationType=" + operationType +
-                ", realmId='" + realmId + '\'' +
-                '}';
+        return new StringBuilder().append("VoidEventHandler{").append("resourceType=").append(resourceType).append(", operationType=").append(operationType).append(", realmId='").append(realmId).append('\'').append('}').toString();
     }
 
     @Override

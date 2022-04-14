@@ -13,37 +13,20 @@ import org.keycloak.models.KeycloakSessionFactory;
 import java.util.Properties;
 
 public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory{
-    private String campServer  = null;
     private KafkaProducer producer;
 
     private static final String KAFKA_HOST = "KAFKA_HOST";
     private static final String KAFKA_PORT = "KAFKA_PORT";
-    private static final String SUBSCRIPTION_HOST = "SUBSCRIPTION_HOST";
-    private static final String SUBSCRIPTION_PORT = "SUBSCRIPTION_PORT";
-    private static final String SUBSCRIPTION = "SUBSCRIPTION";
 
     @Override
     public EventListenerProvider create(KeycloakSession keycloakSession) {
-        return new BpandaEventListenerProvider(producer, campServer, keycloakSession);
+        return new BpandaEventListenerProvider(producer, keycloakSession);
     }
 
     @Override
     public void init(Config.Scope config) {
         System.err.println("Scope: " + config.toString());
-        String subscriptionHost = System.getenv(SUBSCRIPTION_HOST);
-        String subscriptionPort = System.getenv(SUBSCRIPTION_PORT);
-        String subscription = System.getenv(SUBSCRIPTION);
-        if (subscription != null && subscription.length() > 0) {
-            campServer = subscription;
-        } else if (null != subscriptionPort && subscriptionHost.length() > 0) {
-            if ("443".equals(subscriptionPort)) {
-                campServer = "https://" + subscriptionHost;
-            } else {
-                campServer = String.format("https://%s:%s", subscriptionHost, subscriptionPort);
-            }
-        } else {
-            System.err.println("SUBSCRIPTION_HOST not set");
-        }
+
         String kafkaHost = System.getenv(KAFKA_HOST);
         String kafkaPort = System.getenv(KAFKA_PORT);
         if (null != kafkaHost && null != kafkaPort) {
