@@ -1,15 +1,21 @@
 package com.bpanda.keycloak.eventlistener;
+
 import com.bpanda.keycloak.handler.IKeycloakEventHandler;
 import com.bpanda.keycloak.handler.KeycloakEventHandlerFactory;
 import com.bpanda.keycloak.model.Group;
 import com.bpanda.keycloak.model.KeycloakData;
+import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
-import org.keycloak.models.*;
+import org.keycloak.models.ClientModel;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,12 +33,14 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
     private static final String LDAP_ID = "LDAP_ID";
     private static final String DEFAULT_CLIENT_ID = "camp";
 
+    private final KafkaAdapter kafkaAdapter;
     private final KeycloakSession keycloakSession;
     private final String campServer;
     private String accountId;
     private int eventCount = 0;
 
-    public BpandaEventListenerProvider(String campServer, KeycloakSession keycloakSession) {
+    public BpandaEventListenerProvider(KafkaProducer producer, String campServer, KeycloakSession keycloakSession) {
+        this.kafkaAdapter = new KafkaAdapter(producer);
         this.campServer = campServer;
         this.keycloakSession = keycloakSession;
     }
@@ -49,8 +57,17 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             if (user != null) {
                 switch (eventType) {
                     case RESET_PASSWORD:
-                    case UPDATE_PROFILE:
                         user.setSingleAttribute("registered", "true");
+                        break;
+                    case UPDATE_PROFILE:
+                    case CUSTOM_REQUIRED_ACTION:
+                        user.setSingleAttribute("registered", "true");
+                        EventMessages.AffectedElement affectedElement = EventMessages.AffectedElement.newBuilder()
+                                .setElementType(EventMessages.ElementTypes.ELEMENT_USER_IDS)
+                                .setValue(userId)
+                                .build();
+
+                        kafkaAdapter.send(realm.getId(), "users.updated", EventMessages.EventTypes.EVENT_CAM_USERS_CHANGED, affectedElement );
                         break;
                     case LOGIN:
                         try {
@@ -76,8 +93,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
     @Override
     public void onEvent(AdminEvent adminEvent, boolean b) {
         eventCount++;
-        if (null == this.campServer) {
-            log.error("camp server not set");
+        if (null == this.campServer && !this.kafkaAdapter.isValid()) {
+            log.error("camp server and produce not set");
             return;
         }
         String realmId = adminEvent.getRealmId();
@@ -119,7 +136,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             String authority = url.getAuthority();
             String keycloakServer = String.format("%s://%s", protocol, authority);
             KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId, clientId, clientSecret);
-            IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, campServer, accountId, keycloakData, represantation);
+            IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, campServer, accountId, keycloakData, represantation);
             if (null != keycloakEventHandler && keycloakEventHandler.isValid()) {
                 keycloakEventHandler.handleRequest(keycloakSession);
                 return;

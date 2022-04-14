@@ -3,6 +3,7 @@ package com.bpanda.keycloak.handler;
 import com.bpanda.keycloak.eventlistener.BpandaEventListenerProvider;
 import com.bpanda.keycloak.eventlistener.CamAdapter;
 import com.bpanda.keycloak.eventlistener.CampException;
+import com.bpanda.keycloak.eventlistener.KafkaAdapter;
 import com.bpanda.keycloak.model.KeycloakData;
 import com.bpanda.keycloak.model.RealmAction;
 import org.keycloak.models.KeycloakSession;
@@ -15,10 +16,12 @@ public class RealmActionHandler implements IKeycloakEventHandler {
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProvider.class);
     private final RealmAction realmAction;
     private final CamAdapter camAdapter;
+    private final KafkaAdapter kafkaAdapter;
 
-    public RealmActionHandler(String campServer, String accountId, KeycloakData keycloakData, String representation) {
+    public RealmActionHandler(KafkaAdapter kafkaAdapter, String campServer, String accountId, KeycloakData keycloakData, String representation) {
         camAdapter = new CamAdapter(campServer, accountId, keycloakData);
         realmAction = RealmAction.getFromResource(representation);
+        this.kafkaAdapter = kafkaAdapter;
 
         if (realmAction != null) {
             String action = realmAction.getAction();
