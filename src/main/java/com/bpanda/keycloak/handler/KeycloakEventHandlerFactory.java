@@ -6,28 +6,36 @@ import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
 
 public class KeycloakEventHandlerFactory {
-    public static IKeycloakEventHandler create(ResourceType resourceType, OperationType operationType, KafkaAdapter kafkaAdapter, String campServer, String accountId, KeycloakData keycloakData, String representation) {
+    public static IKeycloakEventHandler create(ResourceType resourceType, OperationType operationType, KafkaAdapter kafkaAdapter, KeycloakData keycloakData, String representation) {
         if (representation == null || keycloakData.getClientSecret() == null) {
             return new VoidEventHandler(resourceType, operationType, keycloakData.getRealmName());
-        }
-        if (resourceType == ResourceType.USER) {
-            if (operationType == OperationType.CREATE) {
-                return new UserCreatedHandler(kafkaAdapter, campServer, accountId, keycloakData, representation);
-            }
-            if (operationType == OperationType.UPDATE) {
-                return new UserUpdatedHandler(kafkaAdapter, keycloakData, representation);
-            }
-        } else if (resourceType == ResourceType.GROUP) {
-            if (operationType == OperationType.CREATE) {
-                return new GroupCreatedHandler(kafkaAdapter, keycloakData, representation);
-            }
-            if (operationType == OperationType.UPDATE) {
-                return new GroupUpdatedHandler(kafkaAdapter, keycloakData, representation);
-            }
-        } else if (resourceType == ResourceType.REALM) {
-            if (operationType == OperationType.ACTION) {
-                return new RealmActionHandler(kafkaAdapter, campServer, accountId, keycloakData, representation);
-            }
+        }String realmName = keycloakData.getRealmName();
+        switch (resourceType) {
+            case USER:
+                switch (operationType) {
+                    case CREATE:
+                        return new UserCreatedHandler(kafkaAdapter, keycloakData, representation);
+                    case UPDATE:
+                        return new UserUpdatedHandler(kafkaAdapter, realmName, representation);
+                    case DELETE:
+                        return new UserDeletedHandler(kafkaAdapter, realmName, representation);
+                }
+                break;
+            case GROUP:
+                switch (operationType) {
+                    case CREATE:
+                        return new GroupCreatedHandler(kafkaAdapter, realmName, representation);
+                    case UPDATE:
+                        return new GroupUpdatedHandler(kafkaAdapter, realmName, representation);
+                    case DELETE:
+                        return new GroupDeletedHandler(kafkaAdapter, realmName, representation);
+                }
+                break;
+            case REALM:
+                if (operationType == OperationType.ACTION) {
+                    return new RealmActionHandler(kafkaAdapter, realmName, representation);
+                }
+                break;
         }
         return null;
     }

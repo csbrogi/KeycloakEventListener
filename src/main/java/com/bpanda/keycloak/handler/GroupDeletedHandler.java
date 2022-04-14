@@ -9,14 +9,14 @@ import org.keycloak.models.KeycloakSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GroupCreatedHandler implements IKeycloakEventHandler {
+public class GroupDeletedHandler implements IKeycloakEventHandler {
     private final KafkaAdapter kafkaAdapter;
     private final ScimGroup scimGroup;
     private final String realmName;
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProvider.class);
 
 
-    public GroupCreatedHandler(KafkaAdapter kafkaAdapter, String realmName, String representation) {
+    public GroupDeletedHandler(KafkaAdapter kafkaAdapter, String realmName, String representation) {
         this.kafkaAdapter = kafkaAdapter;
         this.realmName = realmName;
         scimGroup = ScimGroup.getFromResource(representation);
@@ -30,8 +30,8 @@ public class GroupCreatedHandler implements IKeycloakEventHandler {
         }
         EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(EventMessages.ElementTypes.ELEMENT_GROUP_IDS, externalId);
 
-        kafkaAdapter.send(realmName, "groups.added", EventMessages.EventTypes.EVENT_KEYCLOAK_GROUPS_ADDED, affectedElement );
-        log.info(String.format("Group %s LDAP/id Id %s Operation Created ", scimGroup, externalId));
+        kafkaAdapter.send(realmName, "groups.deleted", EventMessages.EventTypes.EVENT_KEYCLOAK_GROUPS_DELETED, affectedElement );
+        log.info(String.format("Group %s LDAP/id Id %s Operation Deleted ", scimGroup, externalId));
     }
 
     @Override
