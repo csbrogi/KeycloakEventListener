@@ -87,7 +87,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
             }
         }
-        log.info(String.format("Event Occurred:%s handled: %s", toString(event), handled));
+        log.info(String.format("Event Occurred: %s handled: %s", toString(event), handled));
     }
 
 
@@ -133,7 +133,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             String authority = url.getAuthority();
             String keycloakServer = String.format("%s://%s", protocol, authority);
             KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId, clientId, clientSecret);
-            IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, represantation);
+            IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, represantation, url);
             if (null != keycloakEventHandler && keycloakEventHandler.isValid()) {
                 keycloakEventHandler.handleRequest(keycloakSession);
                 return;

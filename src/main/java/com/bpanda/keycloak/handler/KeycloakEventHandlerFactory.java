@@ -5,11 +5,14 @@ import com.bpanda.keycloak.model.KeycloakData;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
 
+import java.net.URI;
+
 public class KeycloakEventHandlerFactory {
-    public static IKeycloakEventHandler create(ResourceType resourceType, OperationType operationType, KafkaAdapter kafkaAdapter, KeycloakData keycloakData, String representation) {
-        if (representation == null || keycloakData.getClientSecret() == null) {
+    public static IKeycloakEventHandler create(ResourceType resourceType, OperationType operationType, KafkaAdapter kafkaAdapter, KeycloakData keycloakData, String representation, URI url) {
+        if (operationType != OperationType.DELETE && representation == null || keycloakData.getClientSecret() == null) {
             return new VoidEventHandler(resourceType, operationType, keycloakData.getRealmName());
-        }String realmName = keycloakData.getRealmName();
+        }
+        String realmName = keycloakData.getRealmName();
         switch (resourceType) {
             case USER:
                 switch (operationType) {
@@ -18,7 +21,7 @@ public class KeycloakEventHandlerFactory {
                     case UPDATE:
                         return new UserUpdatedHandler(kafkaAdapter, realmName, representation);
                     case DELETE:
-                        return new UserDeletedHandler(kafkaAdapter, realmName, representation);
+                        return new UserDeletedHandler(kafkaAdapter, realmName, url);
                 }
                 break;
             case GROUP:
@@ -28,7 +31,7 @@ public class KeycloakEventHandlerFactory {
                     case UPDATE:
                         return new GroupUpdatedHandler(kafkaAdapter, realmName, representation);
                     case DELETE:
-                        return new GroupDeletedHandler(kafkaAdapter, realmName, representation);
+                        return new GroupDeletedHandler(kafkaAdapter, realmName, url);
                 }
                 break;
             case REALM:
