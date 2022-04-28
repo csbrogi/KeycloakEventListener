@@ -1,7 +1,6 @@
 package com.bpanda.keycloak.handler;
 
 import com.bpanda.keycloak.eventlistener.BpandaEventListenerProvider;
-import com.bpanda.keycloak.eventlistener.CampException;
 import com.bpanda.keycloak.eventlistener.KafkaAdapter;
 import com.bpanda.keycloak.model.RealmAction;
 import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
@@ -30,7 +29,7 @@ public class RealmActionHandler implements IKeycloakEventHandler {
     }
 
     @Override
-    public void handleRequest(KeycloakSession keycloakSession) throws CampException, IOException {
+    public void handleRequest(KeycloakSession keycloakSession) throws IOException {
         String action = realmAction.getAction();
         log.info(String.format("REALM action %s changes %b => %s", action, realmAction.hasChanges(), realmAction));
         if (realmAction.hasChanges()) {

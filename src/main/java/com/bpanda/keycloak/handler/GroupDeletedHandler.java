@@ -40,6 +40,6 @@ public class GroupDeletedHandler implements IKeycloakEventHandler {
 
     @Override
     public boolean isValid() {
-        return groupId != null && groupId != "";
+        return groupId != null && !groupId.equals("");
     }
 }
