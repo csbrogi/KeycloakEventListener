@@ -9,7 +9,7 @@ import java.net.URI;
 
 public class KeycloakEventHandlerFactory {
     public static IKeycloakEventHandler create(ResourceType resourceType, OperationType operationType, KafkaAdapter kafkaAdapter, KeycloakData keycloakData, String representation, URI url) {
-        if (operationType != OperationType.DELETE && representation == null || keycloakData.getClientSecret() == null) {
+        if (representation == null || keycloakData.getClientSecret() == null) {
             return new VoidEventHandler(resourceType, operationType, keycloakData.getRealmName());
         }
         String realmName = keycloakData.getRealmName();
@@ -21,7 +21,7 @@ public class KeycloakEventHandlerFactory {
                     case UPDATE:
                         return new UserUpdatedHandler(kafkaAdapter, realmName, representation);
                     case DELETE:
-                        return new UserDeletedHandler(kafkaAdapter, realmName, url);
+                        return new UserDeletedHandler(kafkaAdapter, realmName, url, representation);
                 }
                 break;
             case GROUP:
@@ -31,7 +31,7 @@ public class KeycloakEventHandlerFactory {
                     case UPDATE:
                         return new GroupUpdatedHandler(kafkaAdapter, realmName, representation);
                     case DELETE:
-                        return new GroupDeletedHandler(kafkaAdapter, realmName, url);
+                        return new GroupDeletedHandler(kafkaAdapter, realmName, url, representation);
                 }
                 break;
             case REALM:
