@@ -10,13 +10,15 @@ import java.util.List;
 public class Group {
     private String id;
     private String name;
-    private Object attributes;
+    private GroupAttributes attributes;
     private List<GroupMember> members;
 
     public static Group getFromResource(String representation) {
         ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         try {
-            return objectMapper.readValue(representation, Group.class);
+            Group group = objectMapper.readValue(representation, Group.class);
+//            objectMapper.read
+            return group;
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -25,6 +27,17 @@ public class Group {
 
     public Group() {
         members = new ArrayList<>();
+    }
+
+    public String getCAMPId() {
+        String ret = null;
+        if (attributes != null) {
+            ret = attributes.getCAMPId();
+        }
+        if (ret == null) {
+            ret = getId();
+        }
+        return ret;
     }
 
     @Override
@@ -51,11 +64,11 @@ public class Group {
         this.name = name;
     }
 
-    public Object getAttributes() {
+    public GroupAttributes getAttributes() {
         return attributes;
     }
 
-    public void setAttributes(Object attributes) {
+    public void setAttributes(GroupAttributes attributes) {
         this.attributes = attributes;
     }
 

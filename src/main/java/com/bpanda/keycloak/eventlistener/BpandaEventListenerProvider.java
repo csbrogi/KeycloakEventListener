@@ -30,7 +30,7 @@ import java.util.Map;
 public class BpandaEventListenerProvider implements EventListenerProvider {
 
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProvider.class);
-    private static final String LDAP_ID = "LDAP_ID";
+
     private static final String DEFAULT_CLIENT_ID = "camp";
 
     private final KafkaAdapter kafkaAdapter;
@@ -126,7 +126,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             OperationType operationType = adminEvent.getOperationType();
             ResourceType resourceType = adminEvent.getResourceType();
             String represantation = adminEvent.getRepresentation();
-            log.error(String.format("KeycloakAdminEvent:%s:%s", resourceType, adminEvent.getRealmId()));
+            log.info(String.format("KeycloakAdminEvent:%s:%s", resourceType, adminEvent.getRealmId()));
 
             URI url = keycloakSession.getContext().getUri().getRequestUri();
             String protocol = url.getScheme();
@@ -139,29 +139,23 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 return;
             }
             if (resourceType == ResourceType.GROUP_MEMBERSHIP) {
-                log.error(String.format("Groupmembership Operation Type: %s:%s", represantation, represantation));
+                // macht effektiv nichts
+                log.info(String.format("Groupmembership Operation Type: %s:%s", represantation, represantation));
                 Group group = Group.getFromResource(represantation);
                 if (group != null) {
                     String externalId = group.getId();
-                    Object attributesObject = group.getAttributes();
-                    if (attributesObject != null) {
-                        HashMap<String, List<String>> attributes = (HashMap) attributesObject;
-                        if (attributes.containsKey(LDAP_ID)) {
-                            List<String> values = attributes.get(LDAP_ID);
-                            if (values != null && !values.isEmpty()) {
-                                externalId = values.get(0);
-                            }
-                        }
-                    }
+
                     log.info(String.format("Group %s LDAP/id Id %s Operation %s ", group, externalId, operationType.toString()));
                 }
             }
-            System.err.println("Admin Event Occurred:" + toString(adminEvent));
+            log.info("Admin Event Occurred:" + toString(adminEvent));
         } catch (Exception ex) {
             ex.printStackTrace();
             log.error("onEvent " + ex);
         }
     }
+
+
 
     @Override
     public void close() {

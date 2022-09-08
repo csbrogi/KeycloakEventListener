@@ -41,7 +41,7 @@ public class KafkaAdapter {
                             + ", exception is " + ex);
                     ex.printStackTrace();
                 } else {
-                    System.err.println("Sent msg to " + md.partition() + " with offset " + md.offset() + " at " + md.timestamp());
+                    System.out.println("Sent msg to " + md.partition() + " with offset " + md.offset() + " at " + md.timestamp());
                 }
             });
             producer.flush();

@@ -16,7 +16,6 @@ public class GroupUpdatedHandler implements IKeycloakEventHandler {
 
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProvider.class);
 
-
     public GroupUpdatedHandler(KafkaAdapter kafkaAdapter, String realmName, String representation) {
         scimGroup = ScimGroup.getFromResource(representation);
         this.realmName = realmName;
@@ -26,6 +25,10 @@ public class GroupUpdatedHandler implements IKeycloakEventHandler {
     @Override
     public void handleRequest(KeycloakSession keycloakSession) {
         String groupId = scimGroup.getId();
+//        scimGroup.get
+//        if (groupId == null) {
+//            groupId = scimGroup.getId();
+//        }
         for (GroupMember member : scimGroup.getMembers()) {
             log.trace("Member " + member.getValue());
         }
@@ -35,8 +38,8 @@ public class GroupUpdatedHandler implements IKeycloakEventHandler {
                 EventMessages.ElementTypes.ELEMENT_GROUP_IDS, groupId);
 
         kafkaAdapter.send(realmName, "groups.changed", EventMessages.EventTypes.EVENT_KEYCLOAK_GROUPS_CHANGED, affectedElement );
-
     }
+
     @Override
     public boolean isValid() {
         return scimGroup != null && scimGroup.isValid();
