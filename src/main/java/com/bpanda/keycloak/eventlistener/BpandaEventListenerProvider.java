@@ -138,6 +138,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 keycloakEventHandler.handleRequest(keycloakSession);
                 return;
             }
+            log.info("Admin Event Occurred:" + toString(adminEvent));
             if (resourceType == ResourceType.GROUP_MEMBERSHIP) {
                 // macht effektiv nichts
                 log.info(String.format("Groupmembership Operation Type: %s:%s", represantation, represantation));
@@ -148,7 +149,6 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                     log.info(String.format("Group %s LDAP/id Id %s Operation %s ", group, externalId, operationType.toString()));
                 }
             }
-            log.info("Admin Event Occurred:" + toString(adminEvent));
         } catch (Exception ex) {
             ex.printStackTrace();
             log.error("onEvent " + ex);
