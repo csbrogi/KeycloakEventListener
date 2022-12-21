@@ -65,14 +65,14 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                                 .setElementType(EventMessages.ElementTypes.ELEMENT_USER_IDS)
                                 .setValue(userId)
                                 .build();
-                        kafkaAdapter.send(realm.getId(), "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement );
+                        kafkaAdapter.send(realm.getId(), "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement);
                         handled = true;
                         break;
                     case LOGIN:
                         try {
                             setUserTimeStamp(user, "lastLoginTimestamp");
                             handled = true;
-                        } catch (DateTimeException ex)  {
+                        } catch (DateTimeException ex) {
                             ex.printStackTrace();
                         }
                         break;
@@ -80,9 +80,17 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                         try {
                             setUserTimeStamp(user, "lastLoginFailureTimestamp");
                             handled = true;
-                        } catch (DateTimeException ex)  {
+                        } catch (DateTimeException ex) {
                             ex.printStackTrace();
                         }
+                        break;
+                    case REGISTER:
+                        user.setSingleAttribute("registered", "true");
+                        EventMessages.AffectedElement addedElement = EventMessages.AffectedElement.newBuilder()
+                                .setElementType(EventMessages.ElementTypes.ELEMENT_USER_IDS)
+                                .setValue(userId)
+                                .build();
+                        kafkaAdapter.send(realm.getId(), "users.added", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_ADDED, addedElement);
                         break;
                 }
             }

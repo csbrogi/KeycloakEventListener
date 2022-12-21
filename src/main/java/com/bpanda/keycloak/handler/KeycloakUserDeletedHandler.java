@@ -6,14 +6,14 @@ import org.keycloak.models.KeycloakSession;
 
 import java.net.URI;
 
-public class UserDeletedHandler implements IKeycloakEventHandler {
+public class KeycloakUserDeletedHandler implements IKeycloakEventHandler {
 
     private final KafkaAdapter kafkaAdapter;
     private final String realmName;
     private final String userId;
 
 
-    public UserDeletedHandler(KafkaAdapter kafkaAdapter, String realmName, URI uri, String representation) {
+    public KeycloakUserDeletedHandler(KafkaAdapter kafkaAdapter, String realmName, URI uri, String representation) {
         this.kafkaAdapter = kafkaAdapter;
         this.realmName = realmName;
         int pos = uri.getRawPath().lastIndexOf("/");
