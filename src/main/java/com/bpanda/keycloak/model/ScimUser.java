@@ -34,6 +34,7 @@ public class ScimUser {
     private String userName;
     private String id;
     private String externalId;
+    private String ldapId;
     private String title;
 
     private String displayName;
@@ -57,6 +58,14 @@ public class ScimUser {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getLdapId() {
+        return ldapId;
+    }
+
+    public void setLdapId(String ldapId) {
+        this.ldapId = ldapId;
     }
 
     public String getTitle() {

@@ -8,7 +8,7 @@ import org.keycloak.events.admin.ResourceType;
 import java.net.URI;
 
 public class KeycloakEventHandlerFactory {
-    public final static String IDENTITY_PROVIDER = System.getenv("IDENTITY_PROVIDER");
+    public final static String EVENT_SOURCE = System.getenv("EVENT_SOURCE");
     public static IKeycloakEventHandler create(ResourceType resourceType, OperationType operationType, KafkaAdapter kafkaAdapter, KeycloakData keycloakData, String representation, URI url) {
         if (operationType != OperationType.DELETE && representation == null || keycloakData.getClientSecret() == null) {
             return new VoidEventHandler(resourceType, operationType, keycloakData.getRealmName());
@@ -16,7 +16,7 @@ public class KeycloakEventHandlerFactory {
         String realmName = keycloakData.getRealmName();
         switch (resourceType) {
             case USER:
-                if ("keycloak".equalsIgnoreCase(IDENTITY_PROVIDER)) {
+                if ("keycloak".equalsIgnoreCase(EVENT_SOURCE)) {
                     switch (operationType) {
                         case CREATE:
                             return new KeycloakUserCreatedHandler(kafkaAdapter, keycloakData, representation);

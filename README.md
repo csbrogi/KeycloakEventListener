@@ -15,7 +15,7 @@ Buid the targe and copy the file target/keycloak-event-listener-jar-with-depende
  
 #Environment
 - <i>KAFKA_PORT</i>, <i>KAFKA_HOST</i> when set, events are send to this kafka
-- <i>IDENTITY_PROVIDER</i> if set to "Keycloak", events from keycloak are handled, otherwise from SCIM
+- <i>EVENT_SOURCE</i> if set to "Keycloak", events from keycloak are handled, otherwise from SCIM
 
 
 If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
