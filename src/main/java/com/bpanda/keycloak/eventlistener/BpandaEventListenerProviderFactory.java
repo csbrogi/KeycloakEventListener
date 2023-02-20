@@ -15,12 +15,14 @@ import java.util.Properties;
 public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory{
     private KafkaProducer producer;
 
+    private BpandaInfluxDBClient bpandaInfluxDBClient;
+
     private static final String KAFKA_HOST = "KAFKA_HOST";
     private static final String KAFKA_PORT = "KAFKA_PORT";
 
     @Override
     public EventListenerProvider create(KeycloakSession keycloakSession) {
-        return new BpandaEventListenerProvider(producer, keycloakSession);
+        return new BpandaEventListenerProvider(producer, bpandaInfluxDBClient, keycloakSession);
     }
 
     @Override
@@ -50,6 +52,24 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         } else {
             System.err.println("Kafka Server not set");
         }
+        String influxDBHost = System.getenv("MONITORING_INFLUXDB_HOST");
+        String influxDBPort = System.getenv("MONITORING_INFLUXDB_PORT");
+        String influxDBSecret = System.getenv("MONITORING_INFLUXDB_SECRET");
+        String influxDBUser = System.getenv("MONITORING_INFLUXDB_USER");
+
+        if (null != influxDBHost && null != influxDBSecret) {
+            if (null == influxDBPort) {
+                influxDBPort = "8086";
+            }
+            if(null == influxDBUser) {
+                influxDBUser = "smartfacts-monitoring-client";
+            }
+            String url = String.format("https://%s:%s", influxDBHost, influxDBPort);
+            bpandaInfluxDBClient = new BpandaInfluxDBClient(url, influxDBUser, influxDBSecret);
+        } else {
+            System.err.println("Either MONITORING_INFLUXDB_HOST or MONITORING_INFLUXDB_SECRET not set");
+        }
+
     }
 
     @Override

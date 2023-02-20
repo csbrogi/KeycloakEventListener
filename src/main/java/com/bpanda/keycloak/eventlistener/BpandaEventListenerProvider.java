@@ -18,14 +18,13 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 import java.net.URI;
 import java.time.DateTimeException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 public class BpandaEventListenerProvider implements EventListenerProvider {
 
@@ -35,11 +34,14 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
     private final KafkaAdapter kafkaAdapter;
     private final KeycloakSession keycloakSession;
+
+    private final BpandaInfluxDBClient bpandaInfluxDBClient;
     private int eventCount = 0;
 
-    public BpandaEventListenerProvider(KafkaProducer producer, KeycloakSession keycloakSession) {
+    public BpandaEventListenerProvider(KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession) {
         this.kafkaAdapter = new KafkaAdapter(producer);
         this.keycloakSession = keycloakSession;
+        this.bpandaInfluxDBClient = bpandaInfluxDBClient;
     }
 
     @Override
@@ -82,6 +84,9 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                             handled = true;
                         } catch (DateTimeException ex) {
                             ex.printStackTrace();
+                        }
+                        if (null != bpandaInfluxDBClient) {
+                            bpandaInfluxDBClient.write(Level.WARN, realm.getName(), event.getClientId(), "login-failure", String.format("Login-Failure Realm %s User %s", realm.getName(), user.getEmail()));
                         }
                         break;
                     case REGISTER:
