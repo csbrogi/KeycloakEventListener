@@ -11,11 +11,13 @@ import java.util.List;
 
 public class ScimUser {
     public static ScimUser getFromResource(String representation) {
-        ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        try {
-            return objectMapper.readValue(representation, ScimUser.class);
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (representation != null && !"".equals(representation)) {
+            ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            try {
+                return objectMapper.readValue(representation, ScimUser.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         return null;
     }
