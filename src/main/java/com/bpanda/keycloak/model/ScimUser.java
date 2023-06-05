@@ -4,6 +4,7 @@ package com.bpanda.keycloak.model;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -12,7 +13,9 @@ import java.util.List;
 public class ScimUser {
     public static ScimUser getFromResource(String representation) {
         if (representation != null && !"".equals(representation)) {
-            ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            ObjectMapper objectMapper = new ObjectMapper().
+                    configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                    .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);;
             try {
                 return objectMapper.readValue(representation, ScimUser.class);
             } catch (IOException e) {
@@ -41,8 +44,9 @@ public class ScimUser {
 
     private String displayName;
     private Name name;
-    private List<EmailOrPhoneValue> emails;
-    private List<EmailOrPhoneValue> phoneNumbers;
+
+    private String email;
+    private String phoneNumber;
     private EnterpriseUser enterpriseUser;
     private ScimMetaData meta;
 
@@ -78,31 +82,34 @@ public class ScimUser {
         this.title = title;
     }
 
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
     public String getEmail() {
         if (null != userName && userName.contains("@")) {
             return userName;
         }
-        if (null != emails && !emails.isEmpty()) {
-            if (emails.size() == 1) {
-                return emails.get(0).getValue();
-            }
-            for (EmailOrPhoneValue e: emails) {
-                if (e.isPrimary()) {
-                    return e.getValue();
-                }
-            }
-            return emails.get(0).getValue();
+        if (null != email && ! "".equals(email)) {
+            return email;
+        }
+        if (null != enterpriseUser) {
+            return enterpriseUser.getEmail();
         }
         return null;
     }
 
-    public List<EmailOrPhoneValue> getPhoneNumbers() {
-        return phoneNumbers;
+    public String getPhoneNumber() {
+        if (null != phoneNumber && ! "".equals(phoneNumber)) {
+            return phoneNumber;
+        } else if (enterpriseUser != null) {
+            return enterpriseUser.getPhoneNumber();
+        }
+        return null;
     }
 
-    public void setPhoneNumbers(List<EmailOrPhoneValue> phoneNumbers) {
-        this.phoneNumbers = phoneNumbers;
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 
     @JsonGetter("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User")
@@ -122,13 +129,7 @@ public class ScimUser {
         this.name = name;
     }
 
-    public List<EmailOrPhoneValue> getEmails() {
-        return emails;
-    }
 
-    public void setEmails(List<EmailOrPhoneValue> emails) {
-        this.emails = emails;
-    }
 
     public String getDisplayName() {
         return displayName;
