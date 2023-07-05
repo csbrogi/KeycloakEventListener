@@ -10,12 +10,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
 
+import static com.bpanda.keycloak.model.EmailOrPhoneValue.getBestValue;
+
 public class ScimUser {
     public static ScimUser getFromResource(String representation) {
         if (representation != null && !"".equals(representation)) {
             ObjectMapper objectMapper = new ObjectMapper().
                     configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                    .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);;
+                    .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
             try {
                 return objectMapper.readValue(representation, ScimUser.class);
             } catch (IOException e) {
@@ -44,9 +46,8 @@ public class ScimUser {
 
     private String displayName;
     private Name name;
-
-    private String email;
-    private String phoneNumber;
+    private List<EmailOrPhoneValue> emails;
+    private List<EmailOrPhoneValue> phoneNumbers;
     private EnterpriseUser enterpriseUser;
     private ScimMetaData meta;
 
@@ -82,34 +83,29 @@ public class ScimUser {
         this.title = title;
     }
 
-    public void setEmail(String email) {
+   /* public void setEmail(String email) {
         this.email = email;
     }
-
+*/
     public String getEmail() {
         if (null != userName && userName.contains("@")) {
             return userName;
         }
-        if (null != email && ! "".equals(email)) {
-            return email;
+        if (null != emails && !emails.isEmpty()) {
+            return getBestValue(emails);
         }
-        if (null != enterpriseUser) {
+        if (enterpriseUser != null) {
             return enterpriseUser.getEmail();
         }
         return null;
     }
 
-    public String getPhoneNumber() {
-        if (null != phoneNumber && ! "".equals(phoneNumber)) {
-            return phoneNumber;
-        } else if (enterpriseUser != null) {
-            return enterpriseUser.getPhoneNumber();
-        }
-        return null;
+    public List<EmailOrPhoneValue> getPhoneNumbers() {
+        return phoneNumbers;
     }
 
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
+    public void setPhoneNumbers(List<EmailOrPhoneValue> phoneNumbers) {
+        this.phoneNumbers = phoneNumbers;
     }
 
     @JsonGetter("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User")
@@ -129,7 +125,13 @@ public class ScimUser {
         this.name = name;
     }
 
+    public List<EmailOrPhoneValue> getEmails() {
+        return emails;
+    }
 
+    public void setEmails(List<EmailOrPhoneValue> emails) {
+        this.emails = emails;
+    }
 
     public String getDisplayName() {
         return displayName;

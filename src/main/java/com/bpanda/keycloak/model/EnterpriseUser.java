@@ -2,6 +2,8 @@ package com.bpanda.keycloak.model;
 
 import java.util.List;
 
+import static com.bpanda.keycloak.model.EmailOrPhoneValue.getBestValue;
+
 public class EnterpriseUser {
     private String division;
     private String organization;
@@ -37,7 +39,10 @@ public class EnterpriseUser {
     }
 
     public String getEmail() {
-        return getBestValue(emails);
+        if (null != emails && !emails.isEmpty()) {
+            return getBestValue(emails);
+        }
+        return null;
     }
 
     public List<EmailOrPhoneValue> getPhoneNumbers() {
@@ -49,21 +54,10 @@ public class EnterpriseUser {
     }
 
     public String getPhoneNumber() {
-        return getBestValue(phoneNumbers);
-    }
-
-    private String getBestValue(List<EmailOrPhoneValue> values) {
-        if(null != values && !values.isEmpty()) {
-            if (values.size() == 1) {
-                return values.get(0).getValue();
-            }
-            for (EmailOrPhoneValue p: values) {
-                if (p.isPrimary()) {
-                    return p.getValue();
-                }
-            }
-            return values.get(0).getValue();
+        if (null != phoneNumbers && !phoneNumbers.isEmpty()) {
+            return getBestValue(phoneNumbers);
         }
         return null;
     }
+
 }
