@@ -30,7 +30,7 @@ public class KeycloakEventHandlerFactory {
                         case CREATE:
                             return new UserCreatedHandler(kafkaAdapter, keycloakData, representation);
                         case UPDATE:
-                            return new UserUpdatedHandler(kafkaAdapter, realmName, representation);
+                            return new UserUpdatedHandler(kafkaAdapter, realmName, url, representation);
                         case DELETE:
                             return new UserDeletedHandler(kafkaAdapter, realmName, url, representation);
                     }
