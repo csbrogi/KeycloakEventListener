@@ -9,13 +9,11 @@ import org.keycloak.models.KeycloakSession;
 public class UserCreatedHandler implements IKeycloakEventHandler {
 
     private final ScimUser scimUser;
-    private final KeycloakData keycloakData;
     private final KafkaAdapter kafkaAdapter;
     private final String realmName;
 
 
     public UserCreatedHandler(KafkaAdapter kafkaAdapter, KeycloakData keycloakData, String representation) {
-        this.keycloakData = keycloakData;
         this.kafkaAdapter = kafkaAdapter;
         scimUser = ScimUser.getFromResource(representation);
         realmName = keycloakData.getRealmName();

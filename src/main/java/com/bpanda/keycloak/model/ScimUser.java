@@ -4,18 +4,25 @@ package com.bpanda.keycloak.model;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.List;
 
+import static com.bpanda.keycloak.model.EmailOrPhoneValue.getBestValue;
+
 public class ScimUser {
     public static ScimUser getFromResource(String representation) {
-        ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        try {
-            return objectMapper.readValue(representation, ScimUser.class);
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (representation != null && !"".equals(representation)) {
+            ObjectMapper objectMapper = new ObjectMapper().
+                    configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                    .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
+            try {
+                return objectMapper.readValue(representation, ScimUser.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         return null;
     }
@@ -76,21 +83,19 @@ public class ScimUser {
         this.title = title;
     }
 
-
+   /* public void setEmail(String email) {
+        this.email = email;
+    }
+*/
     public String getEmail() {
         if (null != userName && userName.contains("@")) {
             return userName;
         }
         if (null != emails && !emails.isEmpty()) {
-            if (emails.size() == 1) {
-                return emails.get(0).getValue();
-            }
-            for (EmailOrPhoneValue e: emails) {
-                if (e.isPrimary()) {
-                    return e.getValue();
-                }
-            }
-            return emails.get(0).getValue();
+            return getBestValue(emails);
+        }
+        if (enterpriseUser != null) {
+            return enterpriseUser.getEmail();
         }
         return null;
     }

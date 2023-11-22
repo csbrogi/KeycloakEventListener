@@ -12,8 +12,10 @@ import org.keycloak.models.KeycloakSessionFactory;
 
 import java.util.Properties;
 
-public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory{
+public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory {
     private KafkaProducer producer;
+
+    private long realmCount;
 
     private BpandaInfluxDBClient bpandaInfluxDBClient;
 
@@ -22,12 +24,13 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public EventListenerProvider create(KeycloakSession keycloakSession) {
+        realmCount = keycloakSession.realms().getRealmsStream().count();
         return new BpandaEventListenerProvider(producer, bpandaInfluxDBClient, keycloakSession);
     }
 
     @Override
     public void init(Config.Scope config) {
-        System.err.println("Scope: " + config.toString());
+        System.err.println("Scope: " + config.toString() + " realmCount " + realmCount);
 
         String kafkaHost = System.getenv(KAFKA_HOST);
         String kafkaPort = System.getenv(KAFKA_PORT);

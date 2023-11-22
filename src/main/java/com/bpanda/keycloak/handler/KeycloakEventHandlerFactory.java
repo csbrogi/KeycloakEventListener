@@ -30,7 +30,7 @@ public class KeycloakEventHandlerFactory {
                         case CREATE:
                             return new UserCreatedHandler(kafkaAdapter, keycloakData, representation);
                         case UPDATE:
-                            return new UserUpdatedHandler(kafkaAdapter, realmName, representation);
+                            return new UserUpdatedHandler(kafkaAdapter, realmName, url, representation);
                         case DELETE:
                             return new UserDeletedHandler(kafkaAdapter, realmName, url, representation);
                     }
@@ -47,8 +47,11 @@ public class KeycloakEventHandlerFactory {
                 }
                 break;
             case REALM:
-                if (operationType == OperationType.ACTION) {
+                switch (operationType) {
+                    case ACTION:
                     return new RealmActionHandler(kafkaAdapter, realmName, representation);
+                    case CREATE:
+                        return new RealmCreatedHandler(kafkaAdapter, keycloakData, realmName, representation);
                 }
                 break;
         }

@@ -53,7 +53,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         boolean handled = false;
         if (userId != null) {
             RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
-            UserModel user = keycloakSession.users().getUserById(userId, realm);
+            UserModel user = keycloakSession.users().getUserById(realm, userId);
             if (user != null) {
                 switch (eventType) {
                     case RESET_PASSWORD:
@@ -138,7 +138,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         try {
             OperationType operationType = adminEvent.getOperationType();
             ResourceType resourceType = adminEvent.getResourceType();
-            String represantation = adminEvent.getRepresentation();
+            String representation = adminEvent.getRepresentation();
             log.info(String.format("KeycloakAdminEvent:%s:%s", resourceType, adminEvent.getRealmId()));
 
             URI url = keycloakSession.getContext().getUri().getRequestUri();
@@ -146,16 +146,16 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             String authority = url.getAuthority();
             String keycloakServer = String.format("%s://%s", protocol, authority);
             KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId, clientId, clientSecret);
-            IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, represantation, url);
+            IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, representation, url);
             if (null != keycloakEventHandler && keycloakEventHandler.isValid()) {
                 keycloakEventHandler.handleRequest(keycloakSession);
                 return;
             }
             log.info("Admin Event Occurred:" + toString(adminEvent));
             if (resourceType == ResourceType.GROUP_MEMBERSHIP) {
-                // macht effektiv nichts
-                log.info(String.format("Groupmembership Operation Type: %s:%s", represantation, represantation));
-                Group group = Group.getFromResource(represantation);
+                // doesn't do anything
+                log.info(String.format("Group membership Operation Type: %s:%s", representation, representation));
+                Group group = Group.getFromResource(representation);
                 if (group != null) {
                     String externalId = group.getId();
 
@@ -172,7 +172,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
     @Override
     public void close() {
-        log.info("close events: " + eventCount);
+
     }
     private String toString(AdminEvent adminEvent) {
         return String.format("type=%s, realmId=%s", adminEvent.getResourceType(), adminEvent.getRealmId());
