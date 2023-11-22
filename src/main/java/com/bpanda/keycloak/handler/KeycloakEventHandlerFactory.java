@@ -47,8 +47,11 @@ public class KeycloakEventHandlerFactory {
                 }
                 break;
             case REALM:
-                if (operationType == OperationType.ACTION) {
+                switch (operationType) {
+                    case ACTION:
                     return new RealmActionHandler(kafkaAdapter, realmName, representation);
+                    case CREATE:
+                        return new RealmCreatedHandler(kafkaAdapter, keycloakData, realmName, representation);
                 }
                 break;
         }

@@ -2,6 +2,7 @@ package com.bpanda.keycloak.handler;
 
 import com.bpanda.keycloak.eventlistener.KafkaAdapter;
 import com.bpanda.keycloak.model.EnableState;
+import com.bpanda.keycloak.model.KeycloakUser;
 import com.bpanda.keycloak.model.ScimUser;
 import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
 import org.keycloak.models.KeycloakSession;
@@ -15,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 
 public class UserUpdatedHandler implements IKeycloakEventHandler {
 
+    private final KeycloakUser keycloakUser;
     private final ScimUser scimUser;
     private final EnableState enableState;
     private final KafkaAdapter kafkaAdapter;
@@ -25,6 +27,7 @@ public class UserUpdatedHandler implements IKeycloakEventHandler {
     public UserUpdatedHandler(KafkaAdapter kafkaAdapter, String realmName, URI uri, String representation) {
         this.kafkaAdapter = kafkaAdapter;
         this.realmName = realmName;
+        keycloakUser = KeycloakUser.getFromResource(representation);
         scimUser = ScimUser.getFromResource(representation);
         enableState = EnableState.getFromResource(representation);
         int pos = uri.getRawPath().lastIndexOf("/");
@@ -37,6 +40,10 @@ public class UserUpdatedHandler implements IKeycloakEventHandler {
 
     @Override
     public void handleRequest(KeycloakSession keycloakSession) {
+        String updateUserId = null;
+        if (scimUser != null) {
+            updateUserId = scimUser.getId();
+        }
         if (userId != null) {
             RealmModel realmModel = keycloakSession.realms().getRealm(realmName);
             UserModel user = keycloakSession.users().getUserById(realmModel, userId);
@@ -55,9 +62,10 @@ public class UserUpdatedHandler implements IKeycloakEventHandler {
                 user.setSingleAttribute(attr, val);
             }
         }
-        if (scimUser != null) {
+
+        if (updateUserId != null) {
             EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(
-                    EventMessages.ElementTypes.ELEMENT_USER_IDS, scimUser.getId());
+                    EventMessages.ElementTypes.ELEMENT_USER_IDS, updateUserId);
             kafkaAdapter.send(realmName, "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement);
         }
     }
@@ -65,6 +73,6 @@ public class UserUpdatedHandler implements IKeycloakEventHandler {
     @Override
     public boolean isValid() {
         if (enableState != null) return true;
-        return scimUser != null  && scimUser.isValid();
-    }
+        return scimUser != null  && scimUser.isValid() ||
+                keycloakUser != null && keycloakUser.isValid();    }
 }

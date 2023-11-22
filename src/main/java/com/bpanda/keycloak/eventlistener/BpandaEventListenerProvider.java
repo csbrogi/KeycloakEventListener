@@ -172,7 +172,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
     @Override
     public void close() {
-        log.info("close events: " + eventCount);
+
     }
     private String toString(AdminEvent adminEvent) {
         return String.format("type=%s, realmId=%s", adminEvent.getResourceType(), adminEvent.getRealmId());
