@@ -30,9 +30,15 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     private KeycloakSession keycloakSession;
 
     @Override
-    public EventListenerProvider create(KeycloakSession keycloakSession) {
+    public EventListenerProvider create(KeycloakSession aKeycloakSession) {
         if (this.keycloakSession == null || this.keycloakSession.getContext() == null) {
-            this.keycloakSession = keycloakSession;
+            try {
+                aKeycloakSession.getContext().getUri();
+                this.keycloakSession = aKeycloakSession;
+
+            } catch (Exception e){
+                log.error("create: aKeycloakSession.getContext().getUri(); failed ", e);
+            }
         }
         return new BpandaEventListenerProvider(producer, bpandaInfluxDBClient, keycloakSession);
     }
@@ -107,15 +113,15 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     }
 
     private void sendStatusUpdate(KeycloakSession session) {
-        if (session != null && session.getContext() != null) {
+        if (keycloakSession != null && keycloakSession.getContext() != null) {
             try {
-                KeycloakUriInfo uri = session.getContext().getUri();
-                this.adapter.sendStatusUpdate(session, uri);
+                KeycloakUriInfo uri = keycloakSession.getContext().getUri();
+                this.adapter.sendStatusUpdate(keycloakSession, uri);
             } catch (Exception e) {
                 log.error("sendStatusUpdate failed", e);
             }
         } else {
-            log.info("sendStatusUpdate - session is null or has no context");
+            log.info("sendStatusUpdate - keycloakSession is null or has no context");
         }
     }
 }
