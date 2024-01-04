@@ -5,10 +5,12 @@ import com.bpanda.keycloak.eventlistener.KafkaAdapter;
 import com.bpanda.keycloak.model.KeycloakData;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakUriInfo;
+import org.keycloak.models.RealmModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 public class RealmCreatedHandler implements IKeycloakEventHandler {
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProvider.class);
@@ -29,7 +31,9 @@ public class RealmCreatedHandler implements IKeycloakEventHandler {
 
         if (null != keycloakData.getKeycloakServer()) {
             KeycloakUriInfo uri =  keycloakSession.getContext().getUri();
-            kafkaAdapter.sendStatusUpdate(keycloakSession, uri);
+            String allRealms = keycloakSession.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
+
+            kafkaAdapter.sendStatusUpdate(keycloakSession, uri, allRealms);
         }
     }
 

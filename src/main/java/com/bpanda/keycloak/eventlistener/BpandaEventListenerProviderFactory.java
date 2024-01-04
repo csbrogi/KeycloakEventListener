@@ -10,11 +10,13 @@ import org.keycloak.events.EventListenerProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.KeycloakUriInfo;
+import org.keycloak.models.RealmModel;
 import org.keycloak.timer.TimerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory {
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProviderFactory.class);
@@ -116,7 +118,9 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         if (keycloakSession != null && keycloakSession.getContext() != null) {
             try {
                 KeycloakUriInfo uri = keycloakSession.getContext().getUri();
-                this.adapter.sendStatusUpdate(keycloakSession, uri);
+                String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
+
+                this.adapter.sendStatusUpdate(session, uri, allRealms);
             } catch (Exception e) {
                 log.error("sendStatusUpdate failed", e);
             }
