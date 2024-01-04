@@ -72,7 +72,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             String url = String.format("https://%s:%s", influxDBHost, influxDBPort);
             bpandaInfluxDBClient = new BpandaInfluxDBClient(url, influxDBUser, influxDBSecret);
         } else {
-            log.info(("Either MONITORING_INFLUXDB_HOST or MONITORING_INFLUXDB_SECRET not set");
+            log.info("Either MONITORING_INFLUXDB_HOST or MONITORING_INFLUXDB_SECRET not set");
         }
 
     }
