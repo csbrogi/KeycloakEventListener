@@ -105,11 +105,12 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     }
 
     private void sendStatusUpdate(KeycloakSession session) {
-        if (this.keycloakSession != null && this.keycloakSession.getContext() != null) {
-            KeycloakUriInfo uri = this.keycloakSession.getContext().getUri();
-            if (uri != null) {
-                    this.adapter.sendStatusUpdate(session, uri);
-            }
+        if (session != null && session.getContext() != null) {
+
+            try {
+                KeycloakUriInfo uri = session.getContext().getUri();
+                this.adapter.sendStatusUpdate(session, uri);
+            } catch (Exception e){}
         }
     }
 }
