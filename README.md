@@ -8,6 +8,13 @@ Listen to user and group specific events.
 4.	API references
 
 # Build and Test
+Update Protobuf File:
+
+First edit the proto file in the backend-project and comment out the _scalapb_ lines,
+
+Then use this command
+
+_\protoc-25.1-win64\bin\protoc.exe -I=C:\Users\csbrogi\bpanda-backend\modules\libs\wrapper-protobuf\proto -I=C:\Users\csbrogi\bpanda-backend\modules\libs\event-protobuf\proto --java_out=src\main\java C:\Users\csbrogi\bpanda-backend\modules\libs\event-protobuf\proto\EventMessages.proto_
 Build with _mvn package_
 
 #Installation

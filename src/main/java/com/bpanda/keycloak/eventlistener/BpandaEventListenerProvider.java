@@ -44,6 +44,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         this.bpandaInfluxDBClient = bpandaInfluxDBClient;
     }
 
+
     @Override
     public void onEvent(Event event) {
         log.info(String.format("KeycloakUserEvent:%s:%s", event.getType(), event.getClientId()));

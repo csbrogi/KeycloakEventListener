@@ -1,5 +1,6 @@
 package com.bpanda.keycloak.eventlistener;
 
+import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -7,13 +8,18 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.keycloak.Config;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.KeycloakSessionFactory;
+import org.keycloak.models.*;
+import org.keycloak.timer.TimerProvider;
+import org.keycloak.timer.TimerProviderFactory;
 
+import java.net.URI;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory {
     private KafkaProducer producer;
+
+    private KafkaAdapter adapter;
 
     private long realmCount;
 
@@ -22,8 +28,16 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     private static final String KAFKA_HOST = "KAFKA_HOST";
     private static final String KAFKA_PORT = "KAFKA_PORT";
 
+    private KeycloakSession keycloakSession;
+    private String keycloakId;
+
     @Override
     public EventListenerProvider create(KeycloakSession keycloakSession) {
+        if (this.keycloakSession == null || this.keycloakSession.getContext() == null) {
+            this.keycloakSession = keycloakSession;
+            RealmModel realm = keycloakSession.realms().getRealm("master");
+            keycloakId = realm.getClientByClientId("security-admin-console").getId();
+        }
         realmCount = keycloakSession.realms().getRealmsStream().count();
         return new BpandaEventListenerProvider(producer, bpandaInfluxDBClient, keycloakSession);
     }
@@ -35,7 +49,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         String kafkaHost = System.getenv(KAFKA_HOST);
         String kafkaPort = System.getenv(KAFKA_PORT);
         if (null != kafkaHost && null != kafkaPort) {
-            ClassLoader oldClassLoader =  Thread.currentThread().getContextClassLoader();
+            ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
             Thread.currentThread().setContextClassLoader(null);
             Properties properties = new Properties();
             String bootstrapServer = String.format("https://%s:%s", kafkaHost, kafkaPort);
@@ -47,6 +61,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             properties.put("max.request.size", 1024 * 1024); // limit request size to 1MB            properties.put("bootstrap.servers", bootstrapServer);
             try {
                 producer = new KafkaProducer<>(properties);
+                adapter = new KafkaAdapter(producer);
             } catch (Exception e) {
                 System.err.println("cannot creat kafka producer " + e.getMessage());
                 e.printStackTrace();
@@ -55,6 +70,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         } else {
             System.err.println("Kafka Server not set");
         }
+
         String influxDBHost = System.getenv("MONITORING_INFLUXDB_HOST");
         String influxDBPort = System.getenv("MONITORING_INFLUXDB_PORT");
         String influxDBSecret = System.getenv("MONITORING_INFLUXDB_SECRET");
@@ -64,7 +80,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             if (null == influxDBPort) {
                 influxDBPort = "8086";
             }
-            if(null == influxDBUser) {
+            if (null == influxDBUser) {
                 influxDBUser = "smartfacts-monitoring-client";
             }
             String url = String.format("https://%s:%s", influxDBHost, influxDBPort);
@@ -77,7 +93,9 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
-
+        KeycloakSession keycloakSession = keycloakSessionFactory.create();
+        TimerProvider timer = keycloakSession.getProvider(TimerProvider.class);
+        timer.scheduleTask(this::sendStatusUpdate, 60000, "keycloakStatusTimer");
     }
 
     @Override
@@ -88,5 +106,14 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     @Override
     public String getId() {
         return "Bpanda-event-listener";
+    }
+
+    private void sendStatusUpdate(KeycloakSession session) {
+        if (this.keycloakSession != null && this.keycloakSession.getContext() != null) {
+            KeycloakUriInfo uri = this.keycloakSession.getContext().getUri();
+            if (uri != null) {
+                    this.adapter.sendStatusUpdate(session, uri);
+            }
+        }
     }
 }
