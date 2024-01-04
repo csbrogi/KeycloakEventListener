@@ -57,7 +57,8 @@ public class KafkaAdapter {
     public void sendStatusUpdate(KeycloakSession session, KeycloakUriInfo uri) {
         if (producer != null) {
             String host = uri.getBaseUri().getHost();
-            String port = Integer.toString(uri.getBaseUri().getPort());
+            int portAsInt = uri.getBaseUri().getPort();
+            String port = Integer.toString(portAsInt != -1 ? portAsInt: 443);
             RealmModel realm = session.realms().getRealm("master");
             String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
             String keycloakId = realm.getClientByClientId("security-admin-console").getId();
