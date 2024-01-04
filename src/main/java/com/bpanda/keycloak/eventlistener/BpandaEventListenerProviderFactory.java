@@ -11,10 +11,13 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.KeycloakUriInfo;
 import org.keycloak.timer.TimerProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
 public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory {
+    private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProviderFactory.class);
     private KafkaProducer producer;
 
     private KafkaAdapter adapter;
@@ -47,12 +50,11 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
                 producer = new KafkaProducer<>(properties);
                 adapter = new KafkaAdapter(producer);
             } catch (Exception e) {
-                System.err.println("cannot creat kafka producer " + e.getMessage());
-                e.printStackTrace();
+                log.error("cannot creat kafka producer " + e.getMessage(), e);
             }
             Thread.currentThread().setContextClassLoader(oldClassLoader);
         } else {
-            System.err.println("Kafka Server not set");
+            log.info("Kafka Server not set");
         }
 
         String influxDBHost = System.getenv("MONITORING_INFLUXDB_HOST");
@@ -70,7 +72,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             String url = String.format("https://%s:%s", influxDBHost, influxDBPort);
             bpandaInfluxDBClient = new BpandaInfluxDBClient(url, influxDBUser, influxDBSecret);
         } else {
-            System.err.println("Either MONITORING_INFLUXDB_HOST or MONITORING_INFLUXDB_SECRET not set");
+            log.info(("Either MONITORING_INFLUXDB_HOST or MONITORING_INFLUXDB_SECRET not set");
         }
 
     }
@@ -106,11 +108,14 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     private void sendStatusUpdate(KeycloakSession session) {
         if (session != null && session.getContext() != null) {
-
             try {
                 KeycloakUriInfo uri = session.getContext().getUri();
                 this.adapter.sendStatusUpdate(session, uri);
-            } catch (Exception e){}
+            } catch (Exception e) {
+                log.error("sendStatusUpdate failed", e);
+            }
+        } else {
+            log.info("sendStatusUpdate - session is null or has no context");
         }
     }
 }
