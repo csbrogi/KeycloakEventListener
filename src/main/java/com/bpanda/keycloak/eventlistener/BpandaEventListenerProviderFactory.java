@@ -1,6 +1,5 @@
 package com.bpanda.keycloak.eventlistener;
 
-import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -8,20 +7,17 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.keycloak.Config;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
-import org.keycloak.models.*;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.KeycloakSessionFactory;
+import org.keycloak.models.KeycloakUriInfo;
 import org.keycloak.timer.TimerProvider;
-import org.keycloak.timer.TimerProviderFactory;
 
-import java.net.URI;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
 public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory {
     private KafkaProducer producer;
 
     private KafkaAdapter adapter;
-
-    private long realmCount;
 
     private BpandaInfluxDBClient bpandaInfluxDBClient;
 
@@ -29,36 +25,24 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     private static final String KAFKA_PORT = "KAFKA_PORT";
 
     private KeycloakSession keycloakSession;
-    private String keycloakId;
 
     @Override
     public EventListenerProvider create(KeycloakSession keycloakSession) {
         if (this.keycloakSession == null || this.keycloakSession.getContext() == null) {
             this.keycloakSession = keycloakSession;
-            RealmModel realm = keycloakSession.realms().getRealm("master");
-            keycloakId = realm.getClientByClientId("security-admin-console").getId();
         }
-        realmCount = keycloakSession.realms().getRealmsStream().count();
         return new BpandaEventListenerProvider(producer, bpandaInfluxDBClient, keycloakSession);
     }
 
     @Override
     public void init(Config.Scope config) {
-        System.err.println("Scope: " + config.toString() + " realmCount " + realmCount);
 
         String kafkaHost = System.getenv(KAFKA_HOST);
         String kafkaPort = System.getenv(KAFKA_PORT);
         if (null != kafkaHost && null != kafkaPort) {
             ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
             Thread.currentThread().setContextClassLoader(null);
-            Properties properties = new Properties();
-            String bootstrapServer = String.format("https://%s:%s", kafkaHost, kafkaPort);
-            properties.put("bootstrap.servers", bootstrapServer);
-            properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-
-            properties.put("retries", 3); // retries on transient errors and load balancing disconnection
-            properties.put("max.request.size", 1024 * 1024); // limit request size to 1MB            properties.put("bootstrap.servers", bootstrapServer);
+            Properties properties = getProperties(kafkaHost, kafkaPort);
             try {
                 producer = new KafkaProducer<>(properties);
                 adapter = new KafkaAdapter(producer);
@@ -89,6 +73,18 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             System.err.println("Either MONITORING_INFLUXDB_HOST or MONITORING_INFLUXDB_SECRET not set");
         }
 
+    }
+
+    private static Properties getProperties(String kafkaHost, String kafkaPort) {
+        Properties properties = new Properties();
+        String bootstrapServer = String.format("https://%s:%s", kafkaHost, kafkaPort);
+        properties.put("bootstrap.servers", bootstrapServer);
+        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+
+        properties.put("retries", 3); // retries on transient errors and load balancing disconnection
+        properties.put("max.request.size", 1024 * 1024); // limit request size to 1MB            properties.put("bootstrap.servers", bootstrapServer);
+        return properties;
     }
 
     @Override

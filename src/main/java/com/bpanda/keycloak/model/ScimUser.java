@@ -14,7 +14,7 @@ import static com.bpanda.keycloak.model.EmailOrPhoneValue.getBestValue;
 
 public class ScimUser {
     public static ScimUser getFromResource(String representation) {
-        if (representation != null && !"".equals(representation)) {
+        if (representation != null && !representation.isEmpty()) {
             ObjectMapper objectMapper = new ObjectMapper().
                     configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                     .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
@@ -83,10 +83,6 @@ public class ScimUser {
         this.title = title;
     }
 
-   /* public void setEmail(String email) {
-        this.email = email;
-    }
-*/
     public String getEmail() {
         if (null != userName && userName.contains("@")) {
             return userName;

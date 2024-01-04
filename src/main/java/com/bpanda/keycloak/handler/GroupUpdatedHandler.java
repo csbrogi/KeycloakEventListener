@@ -25,10 +25,6 @@ public class GroupUpdatedHandler implements IKeycloakEventHandler {
     @Override
     public void handleRequest(KeycloakSession keycloakSession) {
         String groupId = scimGroup.getId();
-//        scimGroup.get
-//        if (groupId == null) {
-//            groupId = scimGroup.getId();
-//        }
         for (GroupMember member : scimGroup.getMembers()) {
             log.trace("Member " + member.getValue());
         }

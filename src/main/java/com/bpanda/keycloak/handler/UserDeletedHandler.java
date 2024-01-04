@@ -40,6 +40,6 @@ public class UserDeletedHandler implements IKeycloakEventHandler {
 
     @Override
     public boolean isValid() {
-        return userId != null && !userId.equals("");
+        return userId != null && !userId.isEmpty();
     }
 }
