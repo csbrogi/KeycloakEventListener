@@ -33,7 +33,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public EventListenerProvider create(KeycloakSession aKeycloakSession) {
-        if (this.keycloakSession == null || this.keycloakSession.getContext() == null) {
+        if (aKeycloakSession != null && aKeycloakSession.getContext() != null) {
             try {
                 aKeycloakSession.getContext().getUri();
                 this.keycloakSession = aKeycloakSession;
@@ -47,7 +47,6 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public void init(Config.Scope config) {
-
         String kafkaHost = System.getenv(KAFKA_HOST);
         String kafkaPort = System.getenv(KAFKA_PORT);
         if (null != kafkaHost && null != kafkaPort) {
