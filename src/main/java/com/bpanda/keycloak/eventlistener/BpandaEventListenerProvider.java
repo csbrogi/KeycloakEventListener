@@ -38,8 +38,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
     private final BpandaInfluxDBClient bpandaInfluxDBClient;
     private int eventCount = 0;
 
-    public BpandaEventListenerProvider(KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession) {
-        this.kafkaAdapter = new KafkaAdapter(producer);
+    public BpandaEventListenerProvider(String identityHost, String identityPort, KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession) {
+        this.kafkaAdapter = new KafkaAdapter(producer, identityHost, identityPort);
         this.keycloakSession = keycloakSession;
         this.bpandaInfluxDBClient = bpandaInfluxDBClient;
     }

@@ -33,6 +33,8 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     private static final String KAFKA_PORT = "KAFKA_PORT";
 
     private KeycloakSession keycloakSession;
+    private String identityHost;
+    private String identityPort;
 
     @Override
     public EventListenerProvider create(KeycloakSession aKeycloakSession) {
@@ -41,24 +43,27 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
                 aKeycloakSession.getContext().getUri();
                 this.keycloakSession = aKeycloakSession;
 
-            } catch (Exception e){
+            } catch (Exception e) {
                 log.error("create: aKeycloakSession.getContext().getUri(); failed ", e);
             }
         }
-        return new BpandaEventListenerProvider(producer, bpandaInfluxDBClient, keycloakSession);
+        return new BpandaEventListenerProvider(this.identityHost, identityPort, producer, bpandaInfluxDBClient, keycloakSession);
     }
 
     @Override
     public void init(Config.Scope config) {
         String kafkaHost = System.getenv(KAFKA_HOST);
         String kafkaPort = System.getenv(KAFKA_PORT);
+        identityHost = System.getenv("IDENTITY_HOST");
+        identityPort = System.getenv("IDENTITY_PORT");
+
         if (null != kafkaHost && null != kafkaPort) {
             ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
             Thread.currentThread().setContextClassLoader(null);
             Properties properties = getProperties(kafkaHost, kafkaPort);
             try {
                 producer = new KafkaProducer<>(properties);
-                adapter = new KafkaAdapter(producer);
+                adapter = new KafkaAdapter(producer, identityHost, identityPort);
             } catch (Exception e) {
                 log.error("cannot creat kafka producer " + e.getMessage(), e);
             }
@@ -102,7 +107,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     @Override
     public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
         KeycloakSession keycloakSession = keycloakSessionFactory.create();
-        Set<Spi> spis =keycloakSessionFactory.getSpis();
+        Set<Spi> spis = keycloakSessionFactory.getSpis();
 
         TimerProvider timer = keycloakSession.getProvider(TimerProvider.class);
         HostnameProvider hp = keycloakSession.getProvider(HostnameProvider.class);
@@ -122,15 +127,24 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     }
 
     private void sendStatusUpdate(KeycloakSession session) {
-        if (keycloakSession != null && keycloakSession.getContext() != null) {
+        try {
+            sendStatusUpdateForSession(session);
+        } catch (Exception e) {
+            log.error("sendStatusUpdate failed for session", e);
             try {
-                KeycloakUriInfo uri = keycloakSession.getContext().getUri();
-                String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
-
-                this.adapter.sendStatusUpdate(session, uri, allRealms);
-            } catch (Exception e) {
-                log.error("sendStatusUpdate failed", e);
+                sendStatusUpdateForSession(keycloakSession);
+            } catch (Exception e2) {
+                log.error("sendStatusUpdate failed for keycloakSession", e2);
             }
+        }
+    }
+
+    private void sendStatusUpdateForSession(KeycloakSession session) {
+        if (session != null && session.getContext() != null) {
+            String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
+            long realmCount = session.realms().getRealmsStream().count();
+
+            this.adapter.sendStatusUpdate(realmCount, allRealms);
         } else {
             log.info("sendStatusUpdate - keycloakSession is null or has no context");
         }
