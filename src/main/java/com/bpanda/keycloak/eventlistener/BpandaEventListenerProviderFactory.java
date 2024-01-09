@@ -11,11 +11,14 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.KeycloakUriInfo;
 import org.keycloak.models.RealmModel;
+import org.keycloak.provider.Spi;
 import org.keycloak.timer.TimerProvider;
+import org.keycloak.urls.HostnameProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory {
@@ -99,7 +102,12 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     @Override
     public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
         KeycloakSession keycloakSession = keycloakSessionFactory.create();
+        Set<Spi> spis =keycloakSessionFactory.getSpis();
+
         TimerProvider timer = keycloakSession.getProvider(TimerProvider.class);
+        HostnameProvider hp = keycloakSession.getProvider(HostnameProvider.class);
+
+//        int port = hp.getPort();
         timer.scheduleTask(this::sendStatusUpdate, 60000, "keycloakStatusTimer");
     }
 
