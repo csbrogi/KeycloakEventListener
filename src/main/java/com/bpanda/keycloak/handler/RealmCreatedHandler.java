@@ -28,14 +28,6 @@ public class RealmCreatedHandler implements IKeycloakEventHandler {
     @Override
     public void handleRequest(KeycloakSession keycloakSession) throws IOException {
         log.info(String.format("REALM created keycloak %s", keycloakData.getKeycloakServer()));
-//        log.info(String.format("REALM created keycloak %s %d", keycloakData.getKeycloakServer(), keycloakSession.realms().getRealmsStream().count()));
-
-//        if (null != keycloakData.getKeycloakServer()) {
-//            KeycloakUriInfo uri =  keycloakSession.getContext().getUri();
-//            String allRealms = keycloakSession.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
-//
-//            kafkaAdapter.sendStatusUpdate(keycloakSession, uri, allRealms);
-//        }
     }
 
     @Override

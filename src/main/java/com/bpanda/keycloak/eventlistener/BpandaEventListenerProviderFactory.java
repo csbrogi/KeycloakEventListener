@@ -101,14 +101,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
-        KeycloakSession keycloakSession = keycloakSessionFactory.create();
-        Set<Spi> spis =keycloakSessionFactory.getSpis();
 
-        TimerProvider timer = keycloakSession.getProvider(TimerProvider.class);
-        HostnameProvider hp = keycloakSession.getProvider(HostnameProvider.class);
-
-//        int port = hp.getPort();
-        timer.scheduleTask(this::sendStatusUpdate, 60000, "keycloakStatusTimer");
     }
 
     @Override
@@ -121,18 +114,5 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         return "Bpanda-event-listener";
     }
 
-    private void sendStatusUpdate(KeycloakSession session) {
-        if (keycloakSession != null && keycloakSession.getContext() != null) {
-            try {
-                KeycloakUriInfo uri = keycloakSession.getContext().getUri();
-                String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
 
-                this.adapter.sendStatusUpdate(session, uri, allRealms);
-            } catch (Exception e) {
-                log.error("sendStatusUpdate failed", e);
-            }
-        } else {
-            log.info("sendStatusUpdate - keycloakSession is null or has no context");
-        }
-    }
 }

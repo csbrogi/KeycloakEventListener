@@ -58,60 +58,6 @@ public class KafkaAdapter {
     }
 
 
-    public void sendStatusUpdate(KeycloakSession session, KeycloakUriInfo uri, String allRealms ) {
-        if (producer != null) {
-            String host = uri.getBaseUri().getHost();
-            int portAsInt = uri.getBaseUri().getPort();
-            String port = Integer.toString(portAsInt != -1 ? portAsInt : 443);
-            RealmModel realm = session.realms().getRealm("master");
-
-            if (realm != null) {
-
-                String keycloakId = realm.getClientByClientId("security-admin-console").getId();
-                long realmCount = session.realms().getRealmsStream().count();
-                EventMessages.AffectedElement realmData = createAffectedElement(EventMessages.ElementTypes.ELEMENT_KEYCLOAK_REALMS, allRealms);
-                EventMessages.AffectedElement affectedElement = EventMessages.AffectedElement.newBuilder()
-                        .setElementType(EventMessages.ElementTypes.ELEMENT_KEYCLOAK_REALM_COUNT)
-                        .setValue(Long.toString(realmCount))
-                        .build();
-
-                EventMessages.AffectedElement hostElement = EventMessages.AffectedElement.newBuilder()
-                        .setElementType(EventMessages.ElementTypes.ELEMENT_KEYCLOAK_HOST)
-                        .setValue(host)
-                        .build();
-
-                EventMessages.AffectedElement portElement = EventMessages.AffectedElement.newBuilder()
-                        .setElementType(EventMessages.ElementTypes.ELEMENT_KEYCLOAK_PORT)
-                        .setValue(port)
-                        .build();
-
-                EventMessages.Event.Builder builder = EventMessages.Event.newBuilder()
-                        .setEventType(EventMessages.EventTypes.EVENT_KEYCLOAK_REALMS_INFO)
-                        .setTimestamp(String.valueOf(Instant.now().toEpochMilli()))
-                        .addData(realmData)
-                        .addData(hostElement)
-                        .addData(portElement)
-                        .addData(affectedElement);
-
-                EventMessages.Event ev = builder.build();
-                ProducerRecord<String, byte[]> record = new ProducerRecord<>(baseKafkaTopicNameKeycloak + keycloakId, "realmsinfo", ev.toByteArray());
-                producer.send(record, (md, ex) -> {
-                    if (ex != null) {
-                        log.error("exception occurred in producer for review :" + ev
-                                + ", exception is ", ex);
-                        ex.printStackTrace();
-                    } else {
-                        log.info("Sent msg to " + md.partition() + " with offset " + md.offset() + " at " + md.timestamp());
-                    }
-                });
-                producer.flush();
-            } else {
-                log.warn("Cannot get master realm");
-            }
-        }
-    }
-
-
     public EventMessages.AffectedElement createAffectedElement(EventMessages.ElementTypes elementType, String value) {
         return EventMessages.AffectedElement.newBuilder()
                 .setElementType(elementType)
