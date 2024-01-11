@@ -47,7 +47,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
                 log.error("create: aKeycloakSession.getContext().getUri(); failed ", e);
             }
         }
-        return new BpandaEventListenerProvider(this.identityHost, identityPort, producer, bpandaInfluxDBClient, keycloakSession);
+        return new BpandaEventListenerProvider(this.identityHost, identityPort, producer, bpandaInfluxDBClient, aKeycloakSession);
     }
 
     @Override
