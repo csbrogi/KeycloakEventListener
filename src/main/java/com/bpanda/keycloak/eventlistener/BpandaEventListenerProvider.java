@@ -76,7 +76,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                             setUserTimeStamp(user, "lastLoginTimestamp");
                             handled = true;
                         } catch (DateTimeException ex) {
-                            ex.printStackTrace();
+                            log.error("setUserTimeStamp: ", ex);
                         }
                         break;
                     case LOGIN_ERROR:
@@ -84,7 +84,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                             setUserTimeStamp(user, "lastLoginFailureTimestamp");
                             handled = true;
                         } catch (DateTimeException ex) {
-                            ex.printStackTrace();
+                            log.error("setUserTimeStamp (lastLoginFailureTimestamp): ", ex);
                         }
                         if (null != bpandaInfluxDBClient) {
                             bpandaInfluxDBClient.write(Level.WARN, realm.getName(), event.getClientId(), "login-failure", String.format("Login-Failure Realm %s User %s", realm.getName(), user.getEmail()));
@@ -120,27 +120,26 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
         String clientId = adminEvent.getAuthDetails().getClientId();
         String clientSecret = null;
-
-        if (null != clientId && null != realm) {
-            ClientModel client = realm.getClientById(clientId);
-            if (client == null) {
-                clientId = DEFAULT_CLIENT_ID;
-                client = realm.getClientByClientId(clientId);
-            }
-            if (null != client) {
-                clientSecret = client.getSecret();
-
-                if (null != client.getClientId()) {
-                    clientId = client.getClientId();
-                }
-                log.info(("RealmId: " + realmId));
-            }
-        }
+        OperationType operationType = adminEvent.getOperationType();
+        ResourceType resourceType = adminEvent.getResourceType();
         try {
-            OperationType operationType = adminEvent.getOperationType();
-            ResourceType resourceType = adminEvent.getResourceType();
+            if (resourceType == ResourceType.USER && null != clientId && null != realm) {
+                ClientModel client = realm.getClientById(clientId);
+                if (client == null) {
+                    clientId = DEFAULT_CLIENT_ID;
+                    client = realm.getClientByClientId(clientId);
+                }
+                if (null != client) {
+                    clientSecret = client.getSecret();
+
+                    if (null != client.getClientId()) {
+                        clientId = client.getClientId();
+                    }
+                }
+            }
+
+            log.info(String.format("KeycloakAdminEvent:%s: RealmId = %s", resourceType, adminEvent.getRealmId()));
             String representation = adminEvent.getRepresentation();
-            log.info(String.format("KeycloakAdminEvent:%s:%s", resourceType, adminEvent.getRealmId()));
 
             URI url = keycloakSession.getContext().getUri().getRequestUri();
             String protocol = url.getScheme();
@@ -164,8 +163,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
-            log.error("onEvent " + ex);
+            log.error(String.format("onEvent resourceType %s operationType %s ", resourceType.toString(), operationType.toString()), ex);
         }
     }
 
