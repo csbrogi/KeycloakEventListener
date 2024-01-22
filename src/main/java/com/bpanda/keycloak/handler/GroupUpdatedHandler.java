@@ -25,10 +25,10 @@ public class GroupUpdatedHandler implements IKeycloakEventHandler {
     @Override
     public void handleRequest(KeycloakSession keycloakSession) {
         String groupId = scimGroup.getId();
-        for (GroupMember member : scimGroup.getMembers()) {
-            log.trace("Member " + member.getValue());
-        }
-        log.info(String.format("Group %s LDAP/id Id %s Operation Updated ", scimGroup, groupId));
+//        for (GroupMember member : scimGroup.getMembers()) {
+//            log.trace("Member " + member.getValue());
+//        }
+        log.info(String.format("Group %s LDAP/id Id %s Operation Updated Members %d ", scimGroup.getDisplayName(), groupId, scimGroup.getMembers().stream().count()));
 
         EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(
                 EventMessages.ElementTypes.ELEMENT_GROUP_IDS, groupId);
