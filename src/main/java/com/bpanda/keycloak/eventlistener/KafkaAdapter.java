@@ -46,11 +46,9 @@ public class KafkaAdapter {
             ProducerRecord<String, byte[]> record = new ProducerRecord<>(baseKafkaTopicName + realmName, subTopic, ev.toByteArray());
             producer.send(record, (md, ex) -> {
                 if (ex != null) {
-                    System.err.println("exception occurred in producer for review :" + ev
-                            + ", exception is " + ex);
-                    ex.printStackTrace();
+                    log.error(String.format("exception occurred in producer for review :%s, exception is ", ev), ex);
                 } else {
-                    System.out.println("Sent msg to " + md.partition() + " with offset " + md.offset() + " at " + md.timestamp());
+                    log.info(String.format("Sent msg to %d with offset %d at %d", md.partition(), md.offset(), md.timestamp()));
                 }
             });
             producer.flush();
