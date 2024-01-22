@@ -72,20 +72,12 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                         handled = true;
                         break;
                     case LOGIN:
-                        try {
-                            setUserTimeStamp(user, "lastLoginTimestamp");
-                            handled = true;
-                        } catch (DateTimeException ex) {
-                            log.error("setUserTimeStamp: ", ex);
-                        }
+                        setUserTimeStamp(user, "lastLoginTimestamp");
+                        handled = true;
                         break;
                     case LOGIN_ERROR:
-                        try {
-                            setUserTimeStamp(user, "lastLoginFailureTimestamp");
-                            handled = true;
-                        } catch (DateTimeException ex) {
-                            log.error("setUserTimeStamp (lastLoginFailureTimestamp): ", ex);
-                        }
+                        setUserTimeStamp(user, "lastLoginFailureTimestamp");
+                        handled = true;
                         if (null != bpandaInfluxDBClient) {
                             bpandaInfluxDBClient.write(Level.WARN, realm.getName(), event.getClientId(), "login-failure", String.format("Login-Failure Realm %s User %s", realm.getName(), user.getEmail()));
                         }
@@ -178,7 +170,13 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
     }
 
     private void setUserTimeStamp(UserModel user, String timestampName) {
-        user.setSingleAttribute(timestampName,  ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
+        try {
+            user.setSingleAttribute(timestampName,  ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
+        } catch (DateTimeException ex) {
+            log.error(String.format("setUserTimeStamp  %s: ", timestampName), ex);
+        } catch (Exception e) {
+            log.error(String.format("setUserTimeStamp  %s: Something went wrong", timestampName), e);
+        }
     }
 
     private String toString(Event event) {
