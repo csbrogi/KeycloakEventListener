@@ -31,7 +31,7 @@ public class RealmActionHandler implements IKeycloakEventHandler {
     @Override
     public void handleRequest(KeycloakSession keycloakSession) throws IOException {
         String action = realmAction.getAction();
-        log.info(String.format("REALM action %s changes %b => %s", action, realmAction.hasChanges(), realmAction));
+        log.error(String.format("REALM action %s changes %b => %s", action, realmAction.hasChanges(), realmAction));
         if (realmAction.hasChanges()) {
             kafkaAdapter.send(realmName, "users.synced", EventMessages.EventTypes.EVENT_KEYCLOAK_FULL_SYNC, null);
         } else {
