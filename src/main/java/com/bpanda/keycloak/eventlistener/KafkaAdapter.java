@@ -63,7 +63,7 @@ public class KafkaAdapter {
 
     public void sendStatusUpdate(long realmCount, String allRealms) {
         if (identityPort == null || identityHost == null) {
-            log.error("identityPort or identityPort - make sure IDENTITY_HOST and IDENTITY_PORT in Environment are set");
+            log.error("identityPort or identityHost not set - make sure IDENTITY_HOST and IDENTITY_PORT in Environment are set");
             return;
         }
         if (producer != null) {
