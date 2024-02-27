@@ -11,14 +11,11 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.models.RealmModel;
-import org.keycloak.provider.Spi;
 import org.keycloak.timer.TimerProvider;
-import org.keycloak.urls.HostnameProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory {
@@ -32,21 +29,11 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     private static final String KAFKA_HOST = "KAFKA_HOST";
     private static final String KAFKA_PORT = "KAFKA_PORT";
 
-    private KeycloakSession keycloakSession;
     private String identityHost;
     private String identityPort;
 
     @Override
     public EventListenerProvider create(KeycloakSession aKeycloakSession) {
-        if (aKeycloakSession != null && aKeycloakSession.getContext() != null) {
-            try {
-                aKeycloakSession.getContext().getUri();
-                this.keycloakSession = aKeycloakSession;
-
-            } catch (Exception e) {
-                log.error("create: aKeycloakSession.getContext().getUri(); failed ", e);
-            }
-        }
         return new BpandaEventListenerProvider(this.identityHost, identityPort, producer, bpandaInfluxDBClient, aKeycloakSession);
     }
 
@@ -109,12 +96,10 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         KeycloakModelUtils.runJobInTransaction(keycloakSessionFactory, s1 -> {
             TimerProvider timer = s1.getProvider(TimerProvider.class);
             log.info("Registering send status update task with TimerProvider");
-            timer.schedule(() -> {
-                KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
-                    log.info("Sending status update");
-                    this.sendStatusUpdateForSession(s2);
-                });
-            },  60000, "keycloakStatusTimer");
+            timer.schedule(() -> KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
+                log.info("Sending status update");
+                this.sendStatusUpdateForSession(s2);
+            }),  60000, "keycloakStatusTimer");
         });
     }
 
@@ -132,6 +117,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         if (session != null && session.getContext() != null) {
             String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
             long realmCount = session.realms().getRealmsStream().count();
+            log.info(String.format("sendStatusUpdate realmCount = %d", realmCount));
 
             this.adapter.sendStatusUpdate(realmCount, allRealms);
         } else {
