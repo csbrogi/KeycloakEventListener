@@ -9,7 +9,7 @@ import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.models.KeycloakUriInfo;
+import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.models.RealmModel;
 import org.keycloak.provider.Spi;
 import org.keycloak.timer.TimerProvider;
@@ -106,19 +106,20 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
-        KeycloakSession keycloakSession = keycloakSessionFactory.create();
-        Set<Spi> spis = keycloakSessionFactory.getSpis();
-
-        TimerProvider timer = keycloakSession.getProvider(TimerProvider.class);
-        HostnameProvider hp = keycloakSession.getProvider(HostnameProvider.class);
-
-//        int port = hp.getPort();
-        timer.scheduleTask(this::sendStatusUpdate, 60000, "keycloakStatusTimer");
+        KeycloakModelUtils.runJobInTransaction(keycloakSessionFactory, s1 -> {
+            TimerProvider timer = s1.getProvider(TimerProvider.class);
+            log.info("Registering send status update task with TimerProvider");
+            timer.schedule(() -> {
+                KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
+                    log.info("Sending status update");
+                    this.sendStatusUpdateForSession(s2);
+                });
+            },  60000, "keycloakStatusTimer");
+        });
     }
 
     @Override
     public void close() {
-
     }
 
     @Override
@@ -126,18 +127,6 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         return "Bpanda-event-listener";
     }
 
-    private void sendStatusUpdate(KeycloakSession session) {
-        try {
-            sendStatusUpdateForSession(session);
-        } catch (Exception e) {
-            log.error("sendStatusUpdate failed for session", e);
-            try {
-                sendStatusUpdateForSession(keycloakSession);
-            } catch (Exception e2) {
-                log.error("sendStatusUpdate failed for keycloakSession", e2);
-            }
-        }
-    }
 
     private void sendStatusUpdateForSession(KeycloakSession session) {
         if (session != null && session.getContext() != null) {
