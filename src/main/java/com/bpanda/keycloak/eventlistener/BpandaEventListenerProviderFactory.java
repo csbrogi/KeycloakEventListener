@@ -48,7 +48,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         String ut = System.getenv("IDENTITY_UPDATE_TIMER");
         if (null != ut) {
             try {
-                updateTime = Long.parseLong(ut);
+                updateTime = Long.parseLong(ut) * 1000;
             } catch (NumberFormatException nfe) {
                 log.error(" Invalid value " + ut + " for variable IDENTITY_UPDATE_TIMER - using default");
             }
