@@ -26,6 +26,8 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     private BpandaInfluxDBClient bpandaInfluxDBClient;
 
+    private long updateTime = 60000;
+
     private static final String KAFKA_HOST = "KAFKA_HOST";
     private static final String KAFKA_PORT = "KAFKA_PORT";
 
@@ -43,6 +45,14 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         String kafkaPort = System.getenv(KAFKA_PORT);
         identityHost = System.getenv("IDENTITY_HOST");
         identityPort = System.getenv("IDENTITY_PORT");
+        String ut = System.getenv("IDENTITY_UPDATE_TIMER");
+        if (null != ut) {
+            try {
+                updateTime = Long.parseLong(ut);
+            } catch (NumberFormatException nfe) {
+                log.error(" Invalid value " + ut + " for variable IDENTITY_UPDATE_TIMER - using default");
+            }
+        }
 
         if (null != kafkaHost && null != kafkaPort) {
             ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
@@ -99,7 +109,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             timer.schedule(() -> KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
                 log.info("Sending status update");
                 this.sendStatusUpdateForSession(s2);
-            }),  60000, "keycloakStatusTimer");
+            }),  updateTime, "keycloakStatusTimer");
         });
     }
 
