@@ -26,7 +26,8 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     private BpandaInfluxDBClient bpandaInfluxDBClient;
 
-    private long updateTime = 60000;
+    private long updateTime = 120;
+    private long counter = 0;
 
     private static final String KAFKA_HOST = "KAFKA_HOST";
     private static final String KAFKA_PORT = "KAFKA_PORT";
@@ -129,7 +130,8 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
 
     private void sendStatusUpdateForSession(KeycloakSession session) {
-        if (session != null && session.getContext() != null) {
+        // nur jedes fünfte Mal senden, damit der erster Udate zeitnah kommt, ohne das System  zu fluten
+        if (session != null && session.getContext() != null && (counter++ %5) == 0) {
             String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
             long realmCount = session.realms().getRealmsStream().count();
             log.info(String.format("sendStatusUpdate realmCount = %d", realmCount));
