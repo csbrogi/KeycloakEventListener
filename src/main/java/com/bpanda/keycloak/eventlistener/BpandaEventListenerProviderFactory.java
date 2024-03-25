@@ -4,6 +4,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.eclipse.microprofile.openapi.models.security.SecurityScheme;
 import org.keycloak.Config;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
@@ -26,7 +27,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     private BpandaInfluxDBClient bpandaInfluxDBClient;
 
-    private long updateTime = 120;
+    private long updateTime = 300;
     private long counter = 0;
 
     private static final String KAFKA_HOST = "KAFKA_HOST";
@@ -111,7 +112,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
         KeycloakModelUtils.runJobInTransaction(keycloakSessionFactory, s1 -> {
             TimerProvider timer = s1.getProvider(TimerProvider.class);
-            log.info("Registering send status update task with TimerProvider");
+            log.info(String.format("Registering send status update task with TimerProvider - updateTime = %d", updateTime));
             timer.schedule(() -> KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
                 log.info("Sending status update");
                 this.sendStatusUpdateForSession(s2);
@@ -139,10 +140,13 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
                 this.adapter.sendStatusUpdate(realmCount, allRealms);
             } else {
-                log.info("sendStatusUpdate - keycloakSession is null or has no context");
+                log.info("sendStatusUpdate - keycloakSession" + (session == null ? " is null": " has no context"));
             }
         }else {
-            log.info(String.format("sendStatusUpdate - keycloakSession count = %s timeer %d", counter, updateTime));
+            log.info(String.format("sendStatusUpdate - keycloakSession count = %s timer %d", counter, updateTime));
+        }
+        if (counter >= Integer.MAX_VALUE/2) {
+            counter = 0;
         }
     }
 }
