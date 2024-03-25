@@ -27,7 +27,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     private BpandaInfluxDBClient bpandaInfluxDBClient;
 
-    private long updateTime = 300;
+    private long updateTime = 120;
     private long counter = 0;
 
     private static final String KAFKA_HOST = "KAFKA_HOST";
@@ -50,11 +50,12 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         String ut = System.getenv("IDENTITY_UPDATE_TIMER");
         if (null != ut) {
             try {
-                updateTime = Long.parseLong(ut) * 1000;
+                updateTime = Long.parseLong(ut);
             } catch (NumberFormatException nfe) {
                 log.error(" Invalid value " + ut + " for variable IDENTITY_UPDATE_TIMER - using default");
             }
         }
+        updateTime *= 1000;
 
         if (null != kafkaHost && null != kafkaPort) {
             ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
