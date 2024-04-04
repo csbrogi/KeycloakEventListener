@@ -106,11 +106,6 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
-//        KeycloakModelUtils.runJobInTransaction(keycloakSessionFactory, s0 -> {
-//                    log.info("Sending initial status update");
-//                    this.sendStatusUpdateForSession(s0);
-//                });
-
         KeycloakModelUtils.runJobInTransaction(keycloakSessionFactory, s1 -> {
             TimerProvider timer = s1.getProvider(TimerProvider.class);
             log.info(String.format("Registering send status update task with TimerProvider - updateTime = %d", updateTime));
