@@ -38,8 +38,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
     private final BpandaInfluxDBClient bpandaInfluxDBClient;
     private int eventCount = 0;
 
-    public BpandaEventListenerProvider(KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession) {
-        this.kafkaAdapter = new KafkaAdapter(producer);
+    public BpandaEventListenerProvider(String identityHost, String identityPort, KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession) {
+        this.kafkaAdapter = new KafkaAdapter(producer, identityHost, identityPort);
         this.keycloakSession = keycloakSession;
         this.bpandaInfluxDBClient = bpandaInfluxDBClient;
     }
@@ -72,12 +72,20 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                         handled = true;
                         break;
                     case LOGIN:
-                        setUserTimeStamp(user, "lastLoginTimestamp");
-                        handled = true;
+                        try {
+                            setUserTimeStamp(user, "lastLoginTimestamp");
+                            handled = true;
+                        } catch (DateTimeException ex) {
+                            log.error("setUserTimeStamp: ", ex);
+                        }
                         break;
                     case LOGIN_ERROR:
-                        setUserTimeStamp(user, "lastLoginFailureTimestamp");
-                        handled = true;
+                        try {
+                            setUserTimeStamp(user, "lastLoginFailureTimestamp");
+                            handled = true;
+                        } catch (DateTimeException ex) {
+                            log.error("setUserTimeStamp (lastLoginFailureTimestamp): ", ex);
+                        }
                         if (null != bpandaInfluxDBClient) {
                             bpandaInfluxDBClient.write(Level.WARN, realm.getName(), event.getClientId(), "login-failure", String.format("Login-Failure Realm %s User %s", realm.getName(), user.getEmail()));
                         }
@@ -112,9 +120,10 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
         String clientId = adminEvent.getAuthDetails().getClientId();
         String clientSecret = null;
-        OperationType operationType = adminEvent.getOperationType();
-        ResourceType resourceType = adminEvent.getResourceType();
+            OperationType operationType = adminEvent.getOperationType();
+            ResourceType resourceType = adminEvent.getResourceType();
         try {
+
             if (resourceType == ResourceType.USER && null != clientId && null != realm) {
                 ClientModel client = realm.getClientById(clientId);
                 if (client == null) {
@@ -123,21 +132,17 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
                 if (null != client) {
                     clientSecret = client.getSecret();
-
-                    if (null != client.getClientId()) {
-                        clientId = client.getClientId();
-                    }
+                    log.info(("RealmId: " + realmId));
                 }
             }
 
-            log.info(String.format("KeycloakAdminEvent:%s: RealmId = %s", resourceType, adminEvent.getRealmId()));
             String representation = adminEvent.getRepresentation();
 
             URI url = keycloakSession.getContext().getUri().getRequestUri();
             String protocol = url.getScheme();
             String authority = url.getAuthority();
             String keycloakServer = String.format("%s://%s", protocol, authority);
-            KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId, clientId, clientSecret);
+            KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId, clientSecret);
             IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, representation, url);
             if (null != keycloakEventHandler && keycloakEventHandler.isValid()) {
                 keycloakEventHandler.handleRequest(keycloakSession);

@@ -10,7 +10,7 @@ import java.net.URI;
 public class KeycloakEventHandlerFactory {
     public final static String EVENT_SOURCE = System.getenv("EVENT_SOURCE");
     public static IKeycloakEventHandler create(ResourceType resourceType, OperationType operationType, KafkaAdapter kafkaAdapter, KeycloakData keycloakData, String representation, URI url) {
-        if (operationType != OperationType.DELETE && (representation == null || keycloakData.getClientSecret() == null)) {
+        if (operationType != OperationType.DELETE && representation == null) {
             return new VoidEventHandler(resourceType, operationType, keycloakData.getRealmName());
         }
         String realmName = keycloakData.getRealmName();

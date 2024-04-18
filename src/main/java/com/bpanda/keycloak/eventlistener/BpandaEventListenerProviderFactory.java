@@ -4,21 +4,19 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.eclipse.microprofile.openapi.models.security.SecurityScheme;
 import org.keycloak.Config;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.models.KeycloakUriInfo;
+import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.models.RealmModel;
-import org.keycloak.provider.Spi;
 import org.keycloak.timer.TimerProvider;
-import org.keycloak.urls.HostnameProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class BpandaEventListenerProviderFactory implements EventListenerProviderFactory {
@@ -29,36 +27,43 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     private BpandaInfluxDBClient bpandaInfluxDBClient;
 
+    private long updateTime = 120;
+    private long counter = 0;
+
     private static final String KAFKA_HOST = "KAFKA_HOST";
     private static final String KAFKA_PORT = "KAFKA_PORT";
 
-    private KeycloakSession keycloakSession;
+    private String identityHost;
+    private String identityPort;
 
     @Override
     public EventListenerProvider create(KeycloakSession aKeycloakSession) {
-        if (aKeycloakSession != null && aKeycloakSession.getContext() != null) {
-            try {
-                aKeycloakSession.getContext().getUri();
-                this.keycloakSession = aKeycloakSession;
-
-            } catch (Exception e){
-                log.error("create: aKeycloakSession.getContext().getUri(); failed ", e);
-            }
-        }
-        return new BpandaEventListenerProvider(producer, bpandaInfluxDBClient, keycloakSession);
+        return new BpandaEventListenerProvider(this.identityHost, identityPort, producer, bpandaInfluxDBClient, aKeycloakSession);
     }
 
     @Override
     public void init(Config.Scope config) {
         String kafkaHost = System.getenv(KAFKA_HOST);
         String kafkaPort = System.getenv(KAFKA_PORT);
+        identityHost = System.getenv("IDENTITY_HOST");
+        identityPort = System.getenv("IDENTITY_PORT");
+        String ut = System.getenv("IDENTITY_UPDATE_TIMER");
+        if (null != ut) {
+            try {
+                updateTime = Long.parseLong(ut);
+            } catch (NumberFormatException nfe) {
+                log.error(" Invalid value " + ut + " for variable IDENTITY_UPDATE_TIMER - using default");
+            }
+        }
+        updateTime *= 1000;
+
         if (null != kafkaHost && null != kafkaPort) {
             ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
             Thread.currentThread().setContextClassLoader(null);
             Properties properties = getProperties(kafkaHost, kafkaPort);
             try {
                 producer = new KafkaProducer<>(properties);
-                adapter = new KafkaAdapter(producer);
+                adapter = new KafkaAdapter(producer, identityHost, identityPort);
             } catch (Exception e) {
                 log.error("cannot creat kafka producer " + e.getMessage(), e);
             }
@@ -101,12 +106,18 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
-
+        KeycloakModelUtils.runJobInTransaction(keycloakSessionFactory, s1 -> {
+            TimerProvider timer = s1.getProvider(TimerProvider.class);
+            log.info(String.format("Registering send status update task with TimerProvider - updateTime = %d", updateTime));
+            timer.schedule(() -> KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
+                log.info("Sending status update");
+                this.sendStatusUpdateForSession(s2);
+            }),  updateTime, "keycloakStatusTimer");
+        });
     }
 
     @Override
     public void close() {
-
     }
 
     @Override
@@ -115,4 +126,23 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     }
 
 
+    private void sendStatusUpdateForSession(KeycloakSession session) {
+        // nur jedes fünfte Mal senden, damit der erster Udate zeitnah kommt, ohne das System  zu fluten
+        if((counter++ %5) == 0) {
+            if (session != null && session.getContext() != null) {
+                String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
+                long realmCount = session.realms().getRealmsStream().count();
+                log.info(String.format("sendStatusUpdate realmCount = %d", realmCount));
+
+                this.adapter.sendStatusUpdate(realmCount, allRealms);
+            } else {
+                log.info("sendStatusUpdate - keycloakSession" + (session == null ? " is null": " has no context"));
+            }
+        }else {
+            log.info(String.format("sendStatusUpdate - keycloakSession count = %s timer %d", counter, updateTime));
+        }
+        if (counter >= Integer.MAX_VALUE/2) {
+            counter = 0;
+        }
+    }
 }
