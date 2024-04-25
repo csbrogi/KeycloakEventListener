@@ -18,7 +18,6 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
 
 import java.net.URI;
 import java.time.DateTimeException;
@@ -52,6 +51,13 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         String userId = event.getUserId();
         EventType eventType = event.getType();
         boolean handled = false;
+        if (null != bpandaInfluxDBClient) {
+            String operation = null;
+            if (event.getType().toString().endsWith("ERROR")) {
+                operation = "ERROR";
+            }
+            bpandaInfluxDBClient.logInfo(event.getId(), eventType.toString(), operation, event.getTime(), event.getRealmId(), event.getClientId());
+        }
         if (userId != null) {
             RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
             UserModel user = keycloakSession.users().getUserById(realm, userId);
@@ -86,9 +92,6 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                         } catch (DateTimeException ex) {
                             log.error("setUserTimeStamp (lastLoginFailureTimestamp): ", ex);
                         }
-                        if (null != bpandaInfluxDBClient) {
-                            bpandaInfluxDBClient.write(Level.WARN, realm.getName(), event.getClientId(), "login-failure", String.format("Login-Failure Realm %s User %s", realm.getName(), user.getEmail()));
-                        }
                         break;
                     case REGISTER:
                         user.setSingleAttribute("registered", "true");
@@ -100,6 +103,9 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                         break;
                 }
             }
+        }
+        if (null != bpandaInfluxDBClient && event.getType().toString().endsWith("ERROR")) {
+            bpandaInfluxDBClient.logError(event);
         }
         log.info(String.format("Event Occurred: %s handled: %s", toString(event), handled));
     }
@@ -120,10 +126,12 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
         String clientId = adminEvent.getAuthDetails().getClientId();
         String clientSecret = null;
-            OperationType operationType = adminEvent.getOperationType();
-            ResourceType resourceType = adminEvent.getResourceType();
+        OperationType operationType = adminEvent.getOperationType();
+        ResourceType resourceType = adminEvent.getResourceType();
+        if (null != bpandaInfluxDBClient) {
+            bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
+        }
         try {
-
             if (resourceType == ResourceType.USER && null != clientId && null != realm) {
                 ClientModel client = realm.getClientById(clientId);
                 if (client == null) {

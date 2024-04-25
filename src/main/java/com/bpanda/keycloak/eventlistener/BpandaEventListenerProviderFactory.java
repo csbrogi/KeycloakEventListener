@@ -4,7 +4,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.eclipse.microprofile.openapi.models.security.SecurityScheme;
 import org.keycloak.Config;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
@@ -72,24 +71,22 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             log.info("Kafka Server not set");
         }
 
-        String influxDBHost = System.getenv("MONITORING_INFLUXDB_HOST");
-        String influxDBPort = System.getenv("MONITORING_INFLUXDB_PORT");
-        String influxDBSecret = System.getenv("MONITORING_INFLUXDB_SECRET");
-        String influxDBUser = System.getenv("MONITORING_INFLUXDB_USER");
+        String influxDBHost = getEnvOrDefault("MONITORING_INFLUXDB_HOST", "marvin.mid.de");
+        String influxDBPort = getEnvOrDefault("MONITORING_INFLUXDB_PORT", "8086");
+        String influxDBUser = getEnvOrDefault("INFLUXDB_USER", "smartfacts-monitoring-client");
+        String influxDBSecret = getEnvOrDefault("MONITORING_INFLUXDB_SECRET", "7fce7424-d4fa-47f6-b328-e67601d68f47");
+        String influxdbDBName = System.getenv("INFLUXDB_DB");
+        String influxdbDBServiceName = getEnvOrDefault("INFLUXDB_DB_SERVICE_NAME", "identity");
+        String influxdbRetentionPolicy = getEnvOrDefault("INFLUXDB_DB_RETENTION_POLICY", "");
+        String influxUrl = String.format("https://%s:%s", influxDBHost, influxDBPort);
 
-        if (null != influxDBHost && null != influxDBSecret) {
-            if (null == influxDBPort) {
-                influxDBPort = "8086";
-            }
-            if (null == influxDBUser) {
-                influxDBUser = "smartfacts-monitoring-client";
-            }
-            String url = String.format("https://%s:%s", influxDBHost, influxDBPort);
-            bpandaInfluxDBClient = new BpandaInfluxDBClient(url, influxDBUser, influxDBSecret);
+
+        if (null != influxdbDBName) {
+            log.info(String.format("Connecting to InfluxDB URL: %s Databasename %s ServiceName %s RetentionPolicy %s", influxUrl, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy));
+            bpandaInfluxDBClient = BpandaInfluxDBClient.createBpandaInfluxDBClient(influxUrl, influxDBUser, influxDBSecret, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy);
         } else {
-            log.info("Either MONITORING_INFLUXDB_HOST or MONITORING_INFLUXDB_SECRET not set");
+            log.info("INFLUXDB_DB not set - no influxdb connection");
         }
-
     }
 
     private static Properties getProperties(String kafkaHost, String kafkaPort) {
@@ -118,6 +115,9 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public void close() {
+        if (null != bpandaInfluxDBClient) {
+            bpandaInfluxDBClient.close();
+        }
     }
 
     @Override
@@ -144,5 +144,9 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         if (counter >= Integer.MAX_VALUE/2) {
             counter = 0;
         }
+    }
+    private static String getEnvOrDefault(String name, String defaultValue) {
+        String result = System.getenv(name);
+        return result == null ? defaultValue : result;
     }
 }
