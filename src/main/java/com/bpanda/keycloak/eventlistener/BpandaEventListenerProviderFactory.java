@@ -4,7 +4,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.eclipse.microprofile.openapi.models.security.SecurityScheme;
 import org.keycloak.Config;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
@@ -27,7 +26,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     private BpandaInfluxDBClient bpandaInfluxDBClient;
 
-    private long updateTime = 120;
+    private long updateTime = 12; // Update timer in seconds
     private long counter = 0;
 
     private static final String KAFKA_HOST = "KAFKA_HOST";
