@@ -4,7 +4,6 @@ import com.bpanda.keycloak.eventlistener.BpandaEventListenerProvider;
 import com.bpanda.keycloak.eventlistener.KafkaAdapter;
 import com.bpanda.keycloak.model.KeycloakData;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.KeycloakUriInfo;
 import org.keycloak.models.RealmModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

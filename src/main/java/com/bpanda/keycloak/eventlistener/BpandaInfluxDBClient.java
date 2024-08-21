@@ -69,9 +69,11 @@ public class BpandaInfluxDBClient {
     }
 
     public void logInfo(String eventId, String category, String operation, long eventTime, String realm, String clientId) {
+        String severity = "INFO";
         Point.Builder pb = Point.measurement("kc-events").
                 tag("serviceName", this.influxdbDBServiceName).
                 tag("category", category).
+                tag("severity", severity).
                 addField("id", eventId).
                 time(eventTime, TimeUnit.MILLISECONDS);
 

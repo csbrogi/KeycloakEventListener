@@ -35,7 +35,7 @@ public class GroupDeletedHandler implements IKeycloakEventHandler {
         EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(EventMessages.ElementTypes.ELEMENT_GROUP_NAME, scimGroup.getDisplayName());
 
         kafkaAdapter.send(realmName, "groups.deleted", EventMessages.EventTypes.EVENT_KEYCLOAK_GROUPS_DELETED, affectedElement );
-        log.info(String.format("Group LDAP/id Id %s Operation Deleted ",  groupId));
+        log.info("Group LDAP/id Id {} Operation Deleted ", groupId);
     }
 
     @Override

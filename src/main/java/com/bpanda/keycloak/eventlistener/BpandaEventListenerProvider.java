@@ -46,17 +46,17 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
     @Override
     public void onEvent(Event event) {
-        log.info(String.format("KeycloakUserEvent:%s:%s", event.getType(), event.getClientId()));
+        log.info("KeycloakUserEvent:{}:{}", event.getType(), event.getClientId());
         eventCount++;
         String userId = event.getUserId();
         EventType eventType = event.getType();
         boolean handled = false;
         if (null != bpandaInfluxDBClient) {
-            String operation = null;
             if (event.getType().toString().endsWith("ERROR")) {
-                operation = "ERROR";
+                bpandaInfluxDBClient.logError(event);
+            } else {
+                bpandaInfluxDBClient.logInfo(event.getId(), eventType.toString(), null, event.getTime(), event.getRealmId(), event.getClientId());
             }
-            bpandaInfluxDBClient.logInfo(event.getId(), eventType.toString(), operation, event.getTime(), event.getRealmId(), event.getClientId());
         }
         if (userId != null) {
             RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
@@ -104,10 +104,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
             }
         }
-        if (null != bpandaInfluxDBClient && event.getType().toString().endsWith("ERROR")) {
-            bpandaInfluxDBClient.logError(event);
-        }
-        log.info(String.format("Event Occurred: %s handled: %s", toString(event), handled));
+        log.info("Event Occurred: {} handled: {}", toString(event), handled);
     }
 
 
@@ -120,11 +117,12 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         }
         String realmId = adminEvent.getRealmId();
         RealmModel realm = keycloakSession.getContext().getRealm();
+        String clientId = adminEvent.getAuthDetails().getClientId();
         if (null != realm && realm.getName() != null) {
             realmId = realm.getName();
+            clientId = realm.getClientById(clientId).getClientId();
         }
 
-        String clientId = adminEvent.getAuthDetails().getClientId();
         String clientSecret = null;
         OperationType operationType = adminEvent.getOperationType();
         ResourceType resourceType = adminEvent.getResourceType();
@@ -140,7 +138,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
                 if (null != client) {
                     clientSecret = client.getSecret();
-                    log.info(("RealmId: " + realmId));
+                    log.info("RealmId: {}",realmId);
                 }
             }
 
@@ -156,15 +154,15 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 keycloakEventHandler.handleRequest(keycloakSession);
                 return;
             }
-            log.info("Admin Event Occurred:" + toString(adminEvent));
+            log.info("Admin Event Occurred:{}", toString(adminEvent));
             if (resourceType == ResourceType.GROUP_MEMBERSHIP) {
                 // doesn't do anything
-                log.info(String.format("Group membership Operation Type: %s:%s", representation, representation));
+                log.info("Group membership Operation Type: {}:{}", representation, representation);
                 Group group = Group.getFromResource(representation);
                 if (group != null) {
                     String externalId = group.getId();
 
-                    log.info(String.format("Group %s LDAP/id Id %s Operation %s ", group, externalId, operationType.toString()));
+                    log.info("Group {} LDAP/id Id {} Operation {} ", group, externalId, operationType.toString());
                 }
             }
         } catch (Exception ex) {
