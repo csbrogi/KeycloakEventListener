@@ -51,7 +51,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             try {
                 updateTime = Long.parseLong(ut);
             } catch (NumberFormatException nfe) {
-                log.error(" Invalid value " + ut + " for variable IDENTITY_UPDATE_TIMER - using default");
+                log.error(" Invalid value {} for variable IDENTITY_UPDATE_TIMER - using default", ut);
             }
         }
         updateTime *= 1000;
@@ -64,7 +64,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
                 producer = new KafkaProducer<>(properties);
                 adapter = new KafkaAdapter(producer, identityHost, identityPort);
             } catch (Exception e) {
-                log.error("cannot creat kafka producer " + e.getMessage(), e);
+                log.error("cannot creat kafka producer {}", e.getMessage(), e);
             }
             Thread.currentThread().setContextClassLoader(oldClassLoader);
         } else {
@@ -76,13 +76,13 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         String influxDBUser = getEnvOrDefault("INFLUXDB_USER", "smartfacts-monitoring-client");
         String influxDBSecret = getEnvOrDefault("MONITORING_INFLUXDB_SECRET", "7fce7424-d4fa-47f6-b328-e67601d68f47");
         String influxdbDBName = System.getenv("INFLUXDB_DB");
-        String influxdbDBServiceName = getEnvOrDefault("INFLUXDB_DB_SERVICE_NAME", "identity");
+        String influxdbDBServiceName = getEnvOrDefault("IDENTITY_HOST", "identity");
         String influxdbRetentionPolicy = getEnvOrDefault("INFLUXDB_DB_RETENTION_POLICY", "");
         String influxUrl = String.format("https://%s:%s", influxDBHost, influxDBPort);
 
 
         if (null != influxdbDBName) {
-            log.info(String.format("Connecting to InfluxDB URL: %s Databasename %s ServiceName %s RetentionPolicy %s", influxUrl, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy));
+            log.info("Connecting to InfluxDB URL: {} Databasename {} ServiceName {} RetentionPolicy {}", influxUrl, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy);
             bpandaInfluxDBClient = BpandaInfluxDBClient.createBpandaInfluxDBClient(influxUrl, influxDBUser, influxDBSecret, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy);
         } else {
             log.info("INFLUXDB_DB not set - no influxdb connection");
@@ -105,7 +105,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
         KeycloakModelUtils.runJobInTransaction(keycloakSessionFactory, s1 -> {
             TimerProvider timer = s1.getProvider(TimerProvider.class);
-            log.info(String.format("Registering send status update task with TimerProvider - updateTime = %d", updateTime));
+            log.info("Registering send status update task with TimerProvider - updateTime = {}", updateTime);
             timer.schedule(() -> KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
                 log.info("Sending status update");
                 this.sendStatusUpdateForSession(s2);
@@ -127,19 +127,19 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
 
     private void sendStatusUpdateForSession(KeycloakSession session) {
-        // nur jedes fünfte Mal senden, damit der erster Udate zeitnah kommt, ohne das System  zu fluten
+        // nur jedes fünfte Mal senden, damit der erster Udate zeitnah kommt, ohne das System zu fluten
         if((counter++ %5) == 0) {
             if (session != null && session.getContext() != null) {
                 String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
                 long realmCount = session.realms().getRealmsStream().count();
-                log.info(String.format("sendStatusUpdate realmCount = %d", realmCount));
+                log.info("sendStatusUpdate realmCount = {}", realmCount);
 
                 this.adapter.sendStatusUpdate(realmCount, allRealms);
             } else {
-                log.info("sendStatusUpdate - keycloakSession" + (session == null ? " is null": " has no context"));
+                log.info("sendStatusUpdate - keycloakSession{}", session == null ? " is null" : " has no context");
             }
         }else {
-            log.info(String.format("sendStatusUpdate - keycloakSession count = %s timer %d", counter, updateTime));
+            log.info("sendStatusUpdate - keycloakSession count = {} timer {}", counter, updateTime);
         }
         if (counter >= Integer.MAX_VALUE/2) {
             counter = 0;
