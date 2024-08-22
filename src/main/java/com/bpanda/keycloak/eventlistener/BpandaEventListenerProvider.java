@@ -124,7 +124,9 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         String clientId = adminEvent.getAuthDetails().getClientId();
         if (null != realm && realm.getName() != null) {
             realmId = realm.getName();
-            clientId = realm.getClientById(clientId).getClientId();
+            if (null != realm.getClientById(clientId)) {
+                clientId = realm.getClientById(clientId).getClientId();
+            }
         }
 
         String clientSecret = null;
