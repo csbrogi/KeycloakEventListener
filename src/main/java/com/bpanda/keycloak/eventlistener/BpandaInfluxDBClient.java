@@ -39,7 +39,7 @@ public class BpandaInfluxDBClient {
     }
 
 
-    public  void logError(Event event){
+    public  void logError(Event event, String realmName){
         String error = String.format("%s - Realm: %s ClientId: %s", event.getType().toString(), event.getRealmId(), event.getClientId());
         String severity = "ERROR";
         if ("expired_code".equals(event.getError())) {
@@ -56,7 +56,7 @@ public class BpandaInfluxDBClient {
                 tag("serviceName", this.influxdbDBServiceName).
                 tag("severity", severity).
                 tag("client", event.getClientId()).
-                tag("realm", event.getRealmId()).
+                tag("realm", realmName).
                 addField("id", event.getId()).
                 addField("message", error).
                 addField("cause", cause.toString()).
