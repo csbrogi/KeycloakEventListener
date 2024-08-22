@@ -52,7 +52,7 @@ public class BpandaInfluxDBClient {
                     .map(e-> e.getKey()+": "+e.getValue())
                     .collect(Collectors.joining(", ")));
         }
-        Point.Builder pb = Point.measurement("incident").
+        Point.Builder pb = Point.measurement("kc-errors").
                 tag("serviceName", this.influxdbDBServiceName).
                 tag("severity", severity).
                 tag("client", event.getClientId()).
