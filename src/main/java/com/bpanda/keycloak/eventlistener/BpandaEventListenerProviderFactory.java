@@ -135,6 +135,9 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
                 log.info("sendStatusUpdate realmCount = {}", realmCount);
 
                 this.adapter.sendStatusUpdate(realmCount, allRealms);
+                if (bpandaInfluxDBClient != null) {
+                    bpandaInfluxDBClient.logRealmCount(realmCount);
+                }
             } else {
                 log.info("sendStatusUpdate - keycloakSession{}", session == null ? " is null" : " has no context");
             }

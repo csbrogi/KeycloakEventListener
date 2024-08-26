@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -93,7 +94,25 @@ public class BpandaInfluxDBClient {
         }
     }
 
+    public void logRealmCount(long realmCount) {
+        String severity = "INFO";
+        String category = "REALM-COUNT";
+        Point.Builder pb = Point.measurement("kc-statistics").
+                tag("serviceName", this.influxdbDBServiceName).
+                tag("category", category).
+                tag("severity", severity).
+                tag("realmCount", String.valueOf(realmCount)).
+                addField("id", UUID.randomUUID().toString()).
+                time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+
+        try {
+            influxDB.write(influxDBName, influxDBRetention, pb.build());
+        } catch (Exception e) {
+            log.error("cannot write info to influx db:", e);
+        }
+    }
     public void close() {
         influxDB.close();
     }
+
 }
