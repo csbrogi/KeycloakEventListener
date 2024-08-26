@@ -135,7 +135,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
                 log.info("sendStatusUpdate realmCount = {}", realmCount);
 
                 this.adapter.sendStatusUpdate(realmCount, allRealms);
-                if (bpandaInfluxDBClient != null) {
+                if (bpandaInfluxDBClient != null && counter % 20 == 0) {
                     bpandaInfluxDBClient.logRealmCount(realmCount);
                 }
             } else {
