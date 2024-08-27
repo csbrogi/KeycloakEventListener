@@ -128,7 +128,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     private void sendStatusUpdateForSession(KeycloakSession session) {
         // nur jedes fünfte Mal senden, damit der erster Udate zeitnah kommt, ohne das System zu fluten
-        if((counter++ %5) == 0) {
+        if((++counter %5) == 0) {
             if (session != null && session.getContext() != null) {
                 String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
                 long realmCount = session.realms().getRealmsStream().count();
