@@ -158,7 +158,6 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, representation, url);
             if (null != keycloakEventHandler && keycloakEventHandler.isValid()) {
                 keycloakEventHandler.handleRequest(keycloakSession);
-                return;
             }
             log.info("Admin Event Occurred:{}", toString(adminEvent));
             if (resourceType == ResourceType.GROUP_MEMBERSHIP) {
