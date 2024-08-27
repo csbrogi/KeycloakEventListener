@@ -107,7 +107,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             TimerProvider timer = s1.getProvider(TimerProvider.class);
             log.info("Registering send status update task with TimerProvider - updateTime = {}", updateTime);
             timer.schedule(() -> KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
-                log.info("Sending status update");
+                log.info("Sending status scheduler");
                 this.sendStatusUpdateForSession(s2);
             }),  updateTime, "keycloakStatusTimer");
         });
@@ -132,17 +132,18 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             if (session != null && session.getContext() != null) {
                 String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
                 long realmCount = session.realms().getRealmsStream().count();
-                log.info("sendStatusUpdate realmCount = {}", realmCount);
+                log.info("send StatusUpdate realmCount = {}", realmCount);
 
                 this.adapter.sendStatusUpdate(realmCount, allRealms);
-                if (bpandaInfluxDBClient != null && counter % 20 == 0) {
+                if (bpandaInfluxDBClient != null && (counter % 20) == 0) {
+                    log.info("log RealmCount to influx");
                     bpandaInfluxDBClient.logRealmCount(realmCount);
                 }
             } else {
-                log.info("sendStatusUpdate - keycloakSession{}", session == null ? " is null" : " has no context");
+                log.info("StatusUpdate not send - keycloakSession{}", session == null ? " is null" : " has no context");
             }
         }else {
-            log.info("sendStatusUpdate - keycloakSession count = {} timer {}", counter, updateTime);
+            log.info("StatusUpdate not send - keycloakSession count = {} timer {}", counter, updateTime);
         }
         if (counter >= Integer.MAX_VALUE/2) {
             counter = 0;
