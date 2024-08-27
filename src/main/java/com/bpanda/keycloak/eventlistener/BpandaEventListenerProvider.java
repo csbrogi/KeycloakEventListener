@@ -172,8 +172,9 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
             }
             if (resourceType == ResourceType.REALM && bpandaInfluxDBClient != null ) {
-                log.info("Realm Operation Type: {}:{}", representation, representation);
-                bpandaInfluxDBClient.logRealmCount(keycloakSession.realms().getRealmsStream().count());
+                long realmCount = keycloakSession.realms().getRealmsStream().count();
+                log.info("Realm Operation Type: {}:{} realmCount = {}", operationType, representation, realmCount);
+                bpandaInfluxDBClient.logRealmCount(realmCount);
             }
         } catch (Exception ex) {
             log.error(String.format("onEvent resourceType %s operationType %s ", resourceType.toString(), operationType.toString()), ex);
