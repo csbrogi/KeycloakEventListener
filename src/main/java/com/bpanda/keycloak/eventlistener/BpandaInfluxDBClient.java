@@ -102,6 +102,7 @@ public class BpandaInfluxDBClient {
                 tag("category", category).
                 tag("severity", severity).
                 tag("realmCount", String.valueOf(realmCount)).
+                addField("numberOfRealms", realmCount).
                 addField("id", UUID.randomUUID().toString()).
                 time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
 
