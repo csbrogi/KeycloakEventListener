@@ -75,7 +75,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         String influxDBPort = getEnvOrDefault("MONITORING_INFLUXDB_PORT", "8086");
         String influxDBUser = getEnvOrDefault("INFLUXDB_USER", "smartfacts-monitoring-client");
         String influxDBSecret = getEnvOrDefault("MONITORING_INFLUXDB_SECRET", "7fce7424-d4fa-47f6-b328-e67601d68f47");
-        String influxdbDBName = System.getenv("INFLUXDB_DB");
+        String influxdbDBName = System.getenv("MONITORING_ENVIRONMENT_NAME");
         String influxdbDBServiceName = getEnvOrDefault("IDENTITY_HOST", "identity");
         String influxdbRetentionPolicy = getEnvOrDefault("INFLUXDB_DB_RETENTION_POLICY", "");
         String influxUrl = String.format("https://%s:%s", influxDBHost, influxDBPort);
@@ -85,7 +85,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             log.info("Connecting to InfluxDB URL: {} Databasename {} ServiceName {} RetentionPolicy {}", influxUrl, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy);
             bpandaInfluxDBClient = BpandaInfluxDBClient.createBpandaInfluxDBClient(influxUrl, influxDBUser, influxDBSecret, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy);
         } else {
-            log.info("INFLUXDB_DB not set - no influxdb connection");
+            log.info("MONITORING_ENVIRONMENT_NAME not set - no influxdb connection");
         }
     }
 
