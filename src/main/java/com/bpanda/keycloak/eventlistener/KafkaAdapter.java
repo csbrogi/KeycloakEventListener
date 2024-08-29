@@ -97,11 +97,10 @@ public class KafkaAdapter {
             ProducerRecord<String, byte[]> record = new ProducerRecord<>(baseKafkaTopicNameKeycloak + keycloakId, "realmsinfo", ev.toByteArray());
             producer.send(record, (md, ex) -> {
                 if (ex != null) {
-                    log.error("exception occurred in producer for review :" + ev
-                            + ", exception is ", ex);
+                    log.error("exception occurred in producer for review :{}, exception is ", ev, ex);
                     ex.printStackTrace();
                 } else {
-                    log.info(String.format("Sent msg to %d with offset %d at %d", md.partition(), md.offset(), md.timestamp()));
+                    log.info("Sent msg to {} with offset {} at {}", md.partition(), md.offset(), md.timestamp());
                 }
             });
             producer.flush();

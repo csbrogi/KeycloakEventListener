@@ -18,7 +18,6 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
 
 import java.net.URI;
 import java.time.DateTimeException;
@@ -47,13 +46,24 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
     @Override
     public void onEvent(Event event) {
-        log.info(String.format("KeycloakUserEvent:%s:%s", event.getType(), event.getClientId()));
+        log.info("KeycloakUserEvent:{}:{}", event.getType(), event.getClientId());
         eventCount++;
         String userId = event.getUserId();
         EventType eventType = event.getType();
         boolean handled = false;
+        String realmName = event.getRealmId();
+        RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
+        if (null != realm) {
+            realmName = realm.getName();
+        }
+        if (null != bpandaInfluxDBClient) {
+            if (event.getType().toString().endsWith("ERROR")) {
+                bpandaInfluxDBClient.logError(event, realmName);
+            } else {
+                bpandaInfluxDBClient.logInfo(event.getId(), eventType.toString(), null, event.getTime(), realmName, event.getClientId());
+            }
+        }
         if (userId != null) {
-            RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
             UserModel user = keycloakSession.users().getUserById(realm, userId);
             if (user != null) {
                 switch (eventType) {
@@ -86,9 +96,6 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                         } catch (DateTimeException ex) {
                             log.error("setUserTimeStamp (lastLoginFailureTimestamp): ", ex);
                         }
-                        if (null != bpandaInfluxDBClient) {
-                            bpandaInfluxDBClient.write(Level.WARN, realm.getName(), event.getClientId(), "login-failure", String.format("Login-Failure Realm %s User %s", realm.getName(), user.getEmail()));
-                        }
                         break;
                     case REGISTER:
                         user.setSingleAttribute("registered", "true");
@@ -101,7 +108,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
             }
         }
-        log.info(String.format("Event Occurred: %s handled: %s", toString(event), handled));
+        log.info("Event Occurred: {} handled: {}", toString(event), handled);
     }
 
 
@@ -114,16 +121,21 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         }
         String realmId = adminEvent.getRealmId();
         RealmModel realm = keycloakSession.getContext().getRealm();
+        String clientId = adminEvent.getAuthDetails().getClientId();
         if (null != realm && realm.getName() != null) {
             realmId = realm.getName();
+            if (null != realm.getClientById(clientId)) {
+                clientId = realm.getClientById(clientId).getClientId();
+            }
         }
 
-        String clientId = adminEvent.getAuthDetails().getClientId();
         String clientSecret = null;
-            OperationType operationType = adminEvent.getOperationType();
-            ResourceType resourceType = adminEvent.getResourceType();
+        OperationType operationType = adminEvent.getOperationType();
+        ResourceType resourceType = adminEvent.getResourceType();
+        if (null != bpandaInfluxDBClient) {
+            bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
+        }
         try {
-
             if (resourceType == ResourceType.USER && null != clientId && null != realm) {
                 ClientModel client = realm.getClientById(clientId);
                 if (client == null) {
@@ -132,7 +144,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
                 if (null != client) {
                     clientSecret = client.getSecret();
-                    log.info(("RealmId: " + realmId));
+                    log.info("RealmId: {}",realmId);
                 }
             }
 
@@ -146,18 +158,22 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, representation, url);
             if (null != keycloakEventHandler && keycloakEventHandler.isValid()) {
                 keycloakEventHandler.handleRequest(keycloakSession);
-                return;
             }
-            log.info("Admin Event Occurred:" + toString(adminEvent));
+            log.info("Admin Event Occurred:{}", toString(adminEvent));
             if (resourceType == ResourceType.GROUP_MEMBERSHIP) {
                 // doesn't do anything
-                log.info(String.format("Group membership Operation Type: %s:%s", representation, representation));
+                log.info("Group membership Operation Type: {}:{}", representation, representation);
                 Group group = Group.getFromResource(representation);
                 if (group != null) {
                     String externalId = group.getId();
 
-                    log.info(String.format("Group %s LDAP/id Id %s Operation %s ", group, externalId, operationType.toString()));
+                    log.info("Group {} LDAP/id Id {} Operation {} ", group, externalId, operationType.toString());
                 }
+            }
+            if (resourceType == ResourceType.REALM && bpandaInfluxDBClient != null ) {
+                long realmCount = keycloakSession.realms().getRealmsStream().count();
+                log.info("Realm Operation Type: {}:{} realmCount = {}", operationType, representation, realmCount);
+                bpandaInfluxDBClient.logRealmCount(realmCount);
             }
         } catch (Exception ex) {
             log.error(String.format("onEvent resourceType %s operationType %s ", resourceType.toString(), operationType.toString()), ex);
