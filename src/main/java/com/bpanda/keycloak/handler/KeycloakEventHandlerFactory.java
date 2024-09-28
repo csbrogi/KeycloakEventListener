@@ -52,7 +52,7 @@ public class KeycloakEventHandlerFactory {
                     return new RealmActionHandler(kafkaAdapter, realmName, representation);
                     case CREATE:
                     case DELETE:
-                        return new RealmCreatedHandler(kafkaAdapter, keycloakData, realmName, representation);
+                        return new RealmHandler(kafkaAdapter, keycloakData, realmName, operationType, representation);
                 }
                 break;
         }

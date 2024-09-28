@@ -51,7 +51,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             try {
                 updateTime = Long.parseLong(ut);
             } catch (NumberFormatException nfe) {
-                log.error(" Invalid value " + ut + " for variable IDENTITY_UPDATE_TIMER - using default");
+                log.error(" Invalid value {} for variable IDENTITY_UPDATE_TIMER - using default", ut);
             }
         }
         updateTime *= 1000;
@@ -64,31 +64,29 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
                 producer = new KafkaProducer<>(properties);
                 adapter = new KafkaAdapter(producer, identityHost, identityPort);
             } catch (Exception e) {
-                log.error("cannot creat kafka producer " + e.getMessage(), e);
+                log.error("cannot creat kafka producer {}", e.getMessage(), e);
             }
             Thread.currentThread().setContextClassLoader(oldClassLoader);
         } else {
             log.info("Kafka Server not set");
         }
 
-        String influxDBHost = System.getenv("MONITORING_INFLUXDB_HOST");
-        String influxDBPort = System.getenv("MONITORING_INFLUXDB_PORT");
+        String influxDBHost = getEnvOrDefault("MONITORING_INFLUXDB_HOST", "marvin.mid.de");
+        String influxDBPort = getEnvOrDefault("MONITORING_INFLUXDB_PORT", "8086");
+        String influxDBUser = getEnvOrDefault("INFLUXDB_USER", "smartfacts-monitoring-client");
         String influxDBSecret = System.getenv("MONITORING_INFLUXDB_SECRET");
-        String influxDBUser = System.getenv("MONITORING_INFLUXDB_USER");
+        String influxdbDBName = System.getenv("MONITORING_ENVIRONMENT_NAME");
+        String influxdbDBServiceName = getEnvOrDefault("IDENTITY_HOST", "identity");
+        String influxdbRetentionPolicy = getEnvOrDefault("INFLUXDB_DB_RETENTION_POLICY", "");
+        String influxUrl = String.format("https://%s:%s", influxDBHost, influxDBPort);
 
-        if (null != influxDBHost && null != influxDBSecret) {
-            if (null == influxDBPort) {
-                influxDBPort = "8086";
-            }
-            if (null == influxDBUser) {
-                influxDBUser = "smartfacts-monitoring-client";
-            }
-            String url = String.format("https://%s:%s", influxDBHost, influxDBPort);
-            bpandaInfluxDBClient = new BpandaInfluxDBClient(url, influxDBUser, influxDBSecret);
+
+        if (null != influxdbDBName) {
+            log.info("Connecting to InfluxDB URL: {} Databasename {} ServiceName {} RetentionPolicy {}", influxUrl, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy);
+            bpandaInfluxDBClient = BpandaInfluxDBClient.createBpandaInfluxDBClient(influxUrl, influxDBUser, influxDBSecret, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy);
         } else {
-            log.info("Either MONITORING_INFLUXDB_HOST or MONITORING_INFLUXDB_SECRET not set");
+            log.info("MONITORING_ENVIRONMENT_NAME not set - no influxdb connection");
         }
-
     }
 
     private static Properties getProperties(String kafkaHost, String kafkaPort) {
@@ -107,9 +105,9 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
         KeycloakModelUtils.runJobInTransaction(keycloakSessionFactory, s1 -> {
             TimerProvider timer = s1.getProvider(TimerProvider.class);
-            log.info(String.format("Registering send status update task with TimerProvider - updateTime = %d", updateTime));
+            log.info("Registering send status update task with TimerProvider - updateTime = {}", updateTime);
             timer.schedule(() -> KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
-                log.info("Sending status update");
+                log.info("Sending status scheduler");
                 this.sendStatusUpdateForSession(s2);
             }),  updateTime, "keycloakStatusTimer");
         });
@@ -117,6 +115,9 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     @Override
     public void close() {
+        if (null != bpandaInfluxDBClient) {
+            bpandaInfluxDBClient.close();
+        }
     }
 
     @Override
@@ -126,22 +127,30 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
 
     private void sendStatusUpdateForSession(KeycloakSession session) {
-        // nur jedes fünfte Mal senden, damit der erster Udate zeitnah kommt, ohne das System  zu fluten
-        if((counter++ %5) == 0) {
+        // nur jedes fünfte Mal senden, damit der erster Udate zeitnah kommt, ohne das System zu fluten
+        if((++counter %5) == 0) {
             if (session != null && session.getContext() != null) {
                 String allRealms = session.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
                 long realmCount = session.realms().getRealmsStream().count();
-                log.info(String.format("sendStatusUpdate realmCount = %d", realmCount));
+                log.info("send StatusUpdate realmCount = {}", realmCount);
 
                 this.adapter.sendStatusUpdate(realmCount, allRealms);
+                if (bpandaInfluxDBClient != null && (counter % 20) == 0) {
+                    log.info("log RealmCount to influx");
+                    bpandaInfluxDBClient.logRealmCount(realmCount);
+                }
             } else {
-                log.info("sendStatusUpdate - keycloakSession" + (session == null ? " is null": " has no context"));
+                log.info("StatusUpdate not send - keycloakSession{}", session == null ? " is null" : " has no context");
             }
         }else {
-            log.info(String.format("sendStatusUpdate - keycloakSession count = %s timer %d", counter, updateTime));
+            log.info("StatusUpdate not send - keycloakSession count = {} timer {}", counter, updateTime);
         }
         if (counter >= Integer.MAX_VALUE/2) {
             counter = 0;
         }
+    }
+    private static String getEnvOrDefault(String name, String defaultValue) {
+        String result = System.getenv(name);
+        return result == null ? defaultValue : result;
     }
 }

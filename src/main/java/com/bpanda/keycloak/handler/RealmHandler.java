@@ -3,8 +3,8 @@ package com.bpanda.keycloak.handler;
 import com.bpanda.keycloak.eventlistener.BpandaEventListenerProvider;
 import com.bpanda.keycloak.eventlistener.KafkaAdapter;
 import com.bpanda.keycloak.model.KeycloakData;
+import org.keycloak.events.admin.OperationType;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.KeycloakUriInfo;
 import org.keycloak.models.RealmModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,22 +12,23 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.stream.Collectors;
 
-public class RealmCreatedHandler implements IKeycloakEventHandler {
+public class RealmHandler implements IKeycloakEventHandler {
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProvider.class);
     private final KafkaAdapter kafkaAdapter;
-
+    private final String operationType;
     private final KeycloakData keycloakData;
 
-    public RealmCreatedHandler(KafkaAdapter kafkaAdapter, KeycloakData keycloakData, String realmName, String representation) {
+    public RealmHandler(KafkaAdapter kafkaAdapter, KeycloakData keycloakData, String realmName, OperationType operationType, String representation) {
         this.kafkaAdapter = kafkaAdapter;
         this.keycloakData = keycloakData;
+        this.operationType = operationType.toString();
 
-        log.info(String.format("REALM created %s representation %s", realmName, representation));
+        log.info("REALM {} {} representation {}", this.operationType, realmName, representation);
     }
 
     @Override
     public void handleRequest(KeycloakSession keycloakSession) throws IOException {
-        log.info(String.format("REALM created keycloak %s", keycloakData.getKeycloakServer()));
+        log.info("REALM {} keycloak {}", operationType, keycloakData.getKeycloakServer());
         try {
             String allRealms = keycloakSession.realms().getRealmsStream().map(RealmModel::getName).collect(Collectors.joining(","));
             long realmCount = keycloakSession.realms().getRealmsStream().count();

@@ -26,12 +26,12 @@ public class GroupCreatedHandler implements IKeycloakEventHandler {
     public void handleRequest(KeycloakSession keycloakSession) {
         String externalId = scimGroup.getId();
         for (GroupMember member : scimGroup.getMembers()) {
-            log.trace("Member " + member.getValue());
+            log.trace("Member {}", member.getValue());
         }
         EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(EventMessages.ElementTypes.ELEMENT_GROUP_IDS, externalId);
 
         kafkaAdapter.send(realmName, "groups.added", EventMessages.EventTypes.EVENT_KEYCLOAK_GROUPS_ADDED, affectedElement );
-        log.info(String.format("Group %s LDAP/id Id %s Operation Created ", scimGroup, externalId));
+        log.info("Group {} LDAP/id Id {} Operation Created ", scimGroup, externalId);
     }
 
     @Override
