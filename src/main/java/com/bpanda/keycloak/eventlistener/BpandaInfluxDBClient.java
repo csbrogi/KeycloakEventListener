@@ -24,8 +24,10 @@ public class BpandaInfluxDBClient {
         BpandaInfluxDBClient ret = null;
         try {
             ret = new BpandaInfluxDBClient(databaseURL, user, password, influxDBName, influxdbDBServiceName, influxDBRetention);
+            ret.logStartInfo("4711");
         } catch (Exception e) {
             log.error("cannot connect to influx db:", e);
+            ret = null;
         }
         return ret;
     }
@@ -63,7 +65,10 @@ public class BpandaInfluxDBClient {
                 addField("cause", cause.toString()).
                 time(event.getTime(), TimeUnit.MILLISECONDS);
         try {
-            influxDB.write(influxDBName, influxDBRetention, pb.build());
+            Thread newThread = new Thread(() -> {
+                influxDB.write(influxDBName, influxDBRetention, pb.build());
+            });
+            newThread.start();
         } catch (Exception e) {
             log.error("cannot write message to influx db:", e);
         }
@@ -88,9 +93,28 @@ public class BpandaInfluxDBClient {
             pb.tag("operation", operation);
         }
         try {
-            influxDB.write(influxDBName, influxDBRetention, pb.build());
+            Thread newThread = new Thread(() -> {
+                influxDB.write(influxDBName, influxDBRetention, pb.build());
+            });
+            newThread.start();
         } catch (Exception e) {
             log.error("cannot write info to influx db:", e);
+        }
+    }
+
+    public void logStartInfo(String eventId) {
+        String severity = "INFO";
+        Point.Builder pb = Point.measurement("kc-events").
+                tag("serviceName", this.influxdbDBServiceName).
+                tag("category", "STARTUP").
+                tag("severity", severity).
+                addField("id", eventId).
+                time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+
+        try {
+            influxDB.write(influxDBName, influxDBRetention, pb.build());
+        } catch (Exception e) {
+            log.error("cannot write start info to influx db:", e);
         }
     }
 
@@ -107,7 +131,10 @@ public class BpandaInfluxDBClient {
                 time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
 
         try {
-            influxDB.write(influxDBName, influxDBRetention, pb.build());
+            Thread newThread = new Thread(() -> {
+                influxDB.write(influxDBName, influxDBRetention, pb.build());
+            });
+            newThread.start();
         } catch (Exception e) {
             log.error("cannot write info to influx db:", e);
         }
