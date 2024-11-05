@@ -25,6 +25,13 @@ public class UserDeletedHandler implements IKeycloakEventHandler {
                 userId = scimUser.getLdapId();
             }
         } else {
+            // this wouldn't work since the userId is a keycloak-Id not the cam-Id
+//            int pos = uri.getRawPath().lastIndexOf("/");
+//            if (pos > 0) {
+//                userId = uri.getRawPath().substring(pos + 1);
+//            } else {
+//                userId = null;
+//            }
             userId = null;
         }
     }
