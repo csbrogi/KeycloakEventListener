@@ -107,7 +107,7 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             TimerProvider timer = s1.getProvider(TimerProvider.class);
             log.info("Registering send status update task with TimerProvider - updateTime = {}", updateTime);
             timer.schedule(() -> KeycloakModelUtils.runJobInTransaction(s1.getKeycloakSessionFactory(), s2 -> {
-                log.info("Sending status scheduler");
+                log.debug("Sending status scheduler");
                 this.sendStatusUpdateForSession(s2);
             }),  updateTime, "keycloakStatusTimer");
         });
@@ -140,10 +140,10 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
                     bpandaInfluxDBClient.logRealmCount(realmCount);
                 }
             } else {
-                log.info("StatusUpdate not send - keycloakSession{}", session == null ? " is null" : " has no context");
+                log.debug("StatusUpdate not send - keycloakSession{}", session == null ? " is null" : " has no context");
             }
         }else {
-            log.info("StatusUpdate not send - keycloakSession count = {} timer {}", counter, updateTime);
+            log.debug("StatusUpdate not send - keycloakSession count = {} timer {}", counter, updateTime);
         }
         if (counter >= Integer.MAX_VALUE/2) {
             counter = 0;
