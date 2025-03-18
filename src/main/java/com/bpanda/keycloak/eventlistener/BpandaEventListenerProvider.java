@@ -57,7 +57,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             realmName = realm.getName();
         }
         if (null != bpandaInfluxDBClient) {
-            if (event.getType().toString().endsWith("ERROR")) {
+            String type = event.getType().toString();
+            if (type.endsWith("ERROR") && !type.equals("LOGIN_ERROR") && !type.equals("REFRESH_TOKEN_ERROR")) {
                 bpandaInfluxDBClient.logError(event, realmName);
             } else {
                 bpandaInfluxDBClient.logInfo(event.getId(), eventType.toString(), null, event.getTime(), realmName, event.getClientId());
