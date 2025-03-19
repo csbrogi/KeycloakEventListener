@@ -57,7 +57,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             realmName = realm.getName();
         }
         if (null != bpandaInfluxDBClient) {
-            if (event.getType().toString().endsWith("ERROR")) {
+            String type = event.getType().toString();
+            if (type.endsWith("ERROR") && !type.equals("LOGIN_ERROR") && !type.equals("REFRESH_TOKEN_ERROR")) {
                 bpandaInfluxDBClient.logError(event, realmName);
             } else {
                 bpandaInfluxDBClient.logInfo(event.getId(), eventType.toString(), null, event.getTime(), realmName, event.getClientId());
@@ -78,7 +79,9 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                                 .setElementType(EventMessages.ElementTypes.ELEMENT_USER_IDS)
                                 .setValue(userId)
                                 .build();
-                        kafkaAdapter.send(realm.getId(), "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement);
+                        if (realm != null) {
+                            kafkaAdapter.send(realm.getId(), "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement);
+                        }
                         handled = true;
                         break;
                     case LOGIN:
@@ -103,7 +106,9 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                                 .setElementType(EventMessages.ElementTypes.ELEMENT_USER_IDS)
                                 .setValue(userId)
                                 .build();
-                        kafkaAdapter.send(realm.getId(), "users.added", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_ADDED, addedElement);
+                        if (realm != null) {
+                            kafkaAdapter.send(realm.getId(), "users.added", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_ADDED, addedElement);
+                        }
                         break;
                 }
             }
