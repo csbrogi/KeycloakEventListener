@@ -13,9 +13,9 @@ public class Operation {
         ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
         try {
-            return objectMapper.readValue(representation, new TypeReference<List<Operation>>() {});
-        } catch (IOException e) {
-            e.printStackTrace();
+            return objectMapper.readValue(representation, new TypeReference<>() {
+            });
+        } catch (IOException ignored) {
         }
         return null;
     }
@@ -40,8 +40,7 @@ public class Operation {
             if (jsonNode1 != null) {
                 this.path = jsonNode1.textValue();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
     }
 
@@ -60,14 +59,6 @@ public class Operation {
     public void setPath(String path) {
         this.path = path;
     }
-
-//    public List<Boolean> getValue() {
-//        return value;
-//    }
-//
-//    public void setValue(List<Boolean> value) {
-//        this.value = value;
-//    }
 
     private String op;
     private String path;

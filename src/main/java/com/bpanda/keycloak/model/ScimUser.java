@@ -20,8 +20,7 @@ public class ScimUser {
                     .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
             try {
                 return objectMapper.readValue(representation, ScimUser.class);
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException ignored) {
             }
         }
         return null;
