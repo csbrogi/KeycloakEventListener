@@ -57,9 +57,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             realmName = realm.getName();
         }
         if (null != bpandaInfluxDBClient) {
-            String type = event.getType().toString();
-            if (type.endsWith("ERROR") && !type.equals("LOGIN_ERROR") && !type.equals("REFRESH_TOKEN_ERROR")) {
-                bpandaInfluxDBClient.logError(event, realmName);
+            if (event.getType().toString().endsWith("ERROR")) {
+                bpandaInfluxDBClient.logError(event, isErrorEvent(event), realmName);
             } else {
                 bpandaInfluxDBClient.logInfo(event.getId(), eventType.toString(), null, event.getTime(), realmName, event.getClientId());
             }
@@ -114,6 +113,19 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             }
         }
         log.info("Event Occurred: {} handled: {}", toString(event), handled);
+    }
+
+    private boolean isErrorEvent(Event event) {
+        boolean ret = false;
+        String type = event.getType().toString();
+        String error = event.getError();
+        if (type.endsWith("ERROR") && !type.equals("LOGIN_ERROR") && !type.equals("REFRESH_TOKEN_ERROR")) {
+            ret = true;
+        }
+        if ("expired_code".equals(error) || "cookie_not_found".equals(error)) {
+            ret = false;
+        }
+        return ret;
     }
 
 
