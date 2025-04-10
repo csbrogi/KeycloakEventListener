@@ -122,7 +122,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         if (type.endsWith("ERROR") && !type.equals("LOGIN_ERROR") && !type.equals("REFRESH_TOKEN_ERROR")) {
             ret = true;
         }
-        if ("expired_code".equals(error) || "cookie_not_found".equals(error)) {
+        if ("expired_code".equals(error) || "cookie_not_found".equals(error) || "session_expired".equals(error)) {
             ret = false;
         }
         return ret;
