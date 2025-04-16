@@ -34,10 +34,12 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
 
     private String identityHost;
     private String identityPort;
+    private String ignoredErrorTypes;
+    private String ignoredErrors;
 
     @Override
     public EventListenerProvider create(KeycloakSession aKeycloakSession) {
-        return new BpandaEventListenerProvider(this.identityHost, identityPort, producer, bpandaInfluxDBClient, aKeycloakSession);
+        return new BpandaEventListenerProvider(this.identityHost, identityPort, producer, bpandaInfluxDBClient, aKeycloakSession, ignoredErrorTypes, ignoredErrors);
     }
 
     @Override
@@ -71,6 +73,8 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             log.info("Kafka Server not set");
         }
 
+        ignoredErrorTypes = getEnvOrDefault("KEYCLOAK_IGNORED_ERROR_TYPES", "LOGIN_ERROR,REFRESH_TOKEN_ERROR");
+        ignoredErrors = getEnvOrDefault("KEYCLOAK_IGNORED_ERRORS", "expired_code,cookie_not_found,session_expired");
         String influxDBHost = getEnvOrDefault("MONITORING_INFLUXDB_HOST", "marvin.mid.de");
         String influxDBPort = getEnvOrDefault("MONITORING_INFLUXDB_PORT", "8086");
         String influxDBUser = getEnvOrDefault("INFLUXDB_USER", "smartfacts-monitoring-client");
