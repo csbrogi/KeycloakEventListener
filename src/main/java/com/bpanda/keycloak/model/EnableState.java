@@ -11,8 +11,7 @@ public class EnableState {
         try {
             EnableState enableState = objectMapper.readValue(representation, EnableState.class);
             return enableState;
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
         return null;
     }

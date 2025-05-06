@@ -42,12 +42,9 @@ public class BpandaInfluxDBClient {
     }
 
 
-    public  void logError(Event event, String realmName){
+    public  void logError(Event event, boolean isErrorEvent, String realmName){
         String error = String.format("%s - Realm: %s ClientId: %s", event.getType().toString(), event.getRealmId(), event.getClientId());
-        String severity = "ERROR";
-        if ("expired_code".equals(event.getError())) {
-            severity = "WARN";
-        }
+        String severity = isErrorEvent ? "ERROR" : "WARN";
         StringBuilder cause = new StringBuilder(event.getError()).append( ": ");
         Map<String, String> details = event.getDetails();
         if (null != details && !details.isEmpty()) {

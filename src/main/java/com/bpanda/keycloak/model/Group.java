@@ -19,8 +19,7 @@ public class Group {
             Group group = objectMapper.readValue(representation, Group.class);
 //            objectMapper.read
             return group;
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
         return null;
     }

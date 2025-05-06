@@ -24,6 +24,7 @@ import java.time.DateTimeException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 public class BpandaEventListenerProvider implements EventListenerProvider {
 
@@ -35,12 +36,16 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
     private final KeycloakSession keycloakSession;
 
     private final BpandaInfluxDBClient bpandaInfluxDBClient;
+    private final List<String> ignoredErrorTypes;
+    private final List<String> ignoredErrors;
     private int eventCount = 0;
 
-    public BpandaEventListenerProvider(String identityHost, String identityPort, KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession) {
+    public BpandaEventListenerProvider(String identityHost, String identityPort, KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession, String ignoredErrorTypes, String ignoredErrors) {
         this.kafkaAdapter = new KafkaAdapter(producer, identityHost, identityPort);
         this.keycloakSession = keycloakSession;
         this.bpandaInfluxDBClient = bpandaInfluxDBClient;
+        this.ignoredErrorTypes = List.of(ignoredErrorTypes.split(","));
+        this.ignoredErrors = List.of(ignoredErrors.split(","));
     }
 
 
@@ -57,9 +62,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             realmName = realm.getName();
         }
         if (null != bpandaInfluxDBClient) {
-            String type = event.getType().toString();
-            if (type.endsWith("ERROR") && !type.equals("LOGIN_ERROR") && !type.equals("REFRESH_TOKEN_ERROR")) {
-                bpandaInfluxDBClient.logError(event, realmName);
+            if (event.getType().toString().endsWith("ERROR")) {
+                bpandaInfluxDBClient.logError(event, isErrorEvent(event), realmName);
             } else {
                 bpandaInfluxDBClient.logInfo(event.getId(), eventType.toString(), null, event.getTime(), realmName, event.getClientId());
             }
@@ -114,6 +118,19 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             }
         }
         log.info("Event Occurred: {} handled: {}", toString(event), handled);
+    }
+
+    private boolean isErrorEvent(Event event) {
+        boolean ret = false;
+        String type = event.getType().toString();
+        String error = event.getError();
+        if (type.endsWith("ERROR") && !ignoredErrorTypes.contains(type)) {
+            ret = true;
+        }
+        if (!ignoredErrors.contains(error)) {
+            ret = false;
+        }
+        return ret;
     }
 
 
@@ -181,7 +198,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 bpandaInfluxDBClient.logRealmCount(realmCount);
             }
         } catch (Exception ex) {
-            log.error(String.format("onEvent resourceType %s operationType %s ", resourceType.toString(), operationType.toString()), ex);
+            log.error("onEvent resourceType {} operationType {} ", resourceType.toString(), operationType.toString(), ex);
         }
     }
 
@@ -199,9 +216,9 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         try {
             user.setSingleAttribute(timestampName,  ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
         } catch (DateTimeException ex) {
-            log.error(String.format("setUserTimeStamp  %s: ", timestampName), ex);
+            log.error("setUserTimeStamp  {}: ", timestampName, ex);
         } catch (Exception e) {
-            log.error(String.format("setUserTimeStamp  %s: Something went wrong", timestampName), e);
+            log.error("setUserTimeStamp  {}: Something went wrong", timestampName, e);
         }
     }
 
