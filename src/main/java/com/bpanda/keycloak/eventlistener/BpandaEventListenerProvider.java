@@ -83,9 +83,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                                 .setElementType(EventMessages.ElementTypes.ELEMENT_USER_IDS)
                                 .setValue(userId)
                                 .build();
-                        if (realm != null) {
-                            kafkaAdapter.send(realm.getId(), "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement);
-                        }
+                        kafkaAdapter.send(realmName, "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement);
                         handled = true;
                         break;
                     case LOGIN:
