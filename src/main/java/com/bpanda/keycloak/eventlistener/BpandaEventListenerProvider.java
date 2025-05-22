@@ -58,8 +58,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         boolean handled = false;
         String realmName = event.getRealmId();
         RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
-        if (null != realm) {
-            realmName = realm.getName();
+        if (null != event.getRealmName()) {
+            realmName = event.getRealmName();
         }
         if (null != bpandaInfluxDBClient) {
             if (event.getType().toString().endsWith("ERROR")) {
