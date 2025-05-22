@@ -51,7 +51,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
     @Override
     public void onEvent(Event event) {
-        log.info("KeycloakUserEvent:{}:{}", event.getType(), event.getClientId());
+        log.info("KeycloakUserEvent:{}: client:{} realmName: {}", event.getType(), event.getClientId(), event.getRealmName());
         eventCount++;
         String userId = event.getUserId();
         EventType eventType = event.getType();
@@ -224,6 +224,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         StringBuilder sb = new StringBuilder();
         sb.append("type=");
         sb.append(event.getType());
+        sb.append(", realmName=");
+        sb.append(event.getRealmName());
         sb.append(", realmId=");
         sb.append(event.getRealmId());
         sb.append(", clientId=");
