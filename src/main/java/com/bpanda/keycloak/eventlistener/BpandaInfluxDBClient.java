@@ -43,7 +43,11 @@ public class BpandaInfluxDBClient {
 
 
     public  void logError(Event event, boolean isErrorEvent, String realmName){
-        String error = String.format("%s - Realm: %s ClientId: %s", event.getType().toString(), event.getRealmId(), event.getClientId());
+        String clientId = event.getClientId();
+        if (null == clientId || clientId.isEmpty()) {
+            clientId = "unknown";
+        }
+        String error = String.format("%s - Realm: %s ClientId: %s", event.getType().toString(), event.getRealmId(), clientId);
         String severity = isErrorEvent ? "ERROR" : "WARN";
         StringBuilder cause = new StringBuilder(event.getError()).append( ": ");
         Map<String, String> details = event.getDetails();
@@ -52,10 +56,11 @@ public class BpandaInfluxDBClient {
                     .map(e-> e.getKey()+": "+e.getValue())
                     .collect(Collectors.joining(", ")));
         }
+
         Point.Builder pb = Point.measurement("kc-errors").
                 tag("serviceName", this.influxdbDBServiceName).
                 tag("severity", severity).
-                tag("client", event.getClientId()).
+                tag("client", clientId).
                 tag("realm", realmName).
                 addField("id", event.getId()).
                 addField("message", error).
