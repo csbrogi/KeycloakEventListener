@@ -51,15 +51,15 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
     @Override
     public void onEvent(Event event) {
-        log.info("KeycloakUserEvent:{}:{}", event.getType(), event.getClientId());
+        log.info("KeycloakUserEvent:{}: client:{} realmName: {}", event.getType(), event.getClientId(), event.getRealmName());
         eventCount++;
         String userId = event.getUserId();
         EventType eventType = event.getType();
         boolean handled = false;
         String realmName = event.getRealmId();
         RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
-        if (null != realm) {
-            realmName = realm.getName();
+        if (null != event.getRealmName()) {
+            realmName = event.getRealmName();
         }
         if (null != bpandaInfluxDBClient) {
             if (event.getType().toString().endsWith("ERROR")) {
@@ -83,9 +83,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                                 .setElementType(EventMessages.ElementTypes.ELEMENT_USER_IDS)
                                 .setValue(userId)
                                 .build();
-                        if (realm != null) {
-                            kafkaAdapter.send(realm.getId(), "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement);
-                        }
+                        kafkaAdapter.send(realmName, "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement);
                         handled = true;
                         break;
                     case LOGIN:
@@ -226,6 +224,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         StringBuilder sb = new StringBuilder();
         sb.append("type=");
         sb.append(event.getType());
+        sb.append(", realmName=");
+        sb.append(event.getRealmName());
         sb.append(", realmId=");
         sb.append(event.getRealmId());
         sb.append(", clientId=");
