@@ -125,7 +125,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         if (type.endsWith("ERROR") && !ignoredErrorTypes.contains(type)) {
             ret = true;
         }
-        if (!ignoredErrors.contains(error)) {
+        if (ignoredErrors.contains(error)) {
             ret = false;
         }
         return ret;
