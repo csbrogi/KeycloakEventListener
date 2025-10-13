@@ -3,7 +3,6 @@ package com.bpanda.keycloak.eventlistener;
 import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.keycloak.models.RealmModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
