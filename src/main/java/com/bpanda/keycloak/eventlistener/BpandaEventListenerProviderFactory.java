@@ -36,16 +36,18 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
     private String identityPort;
     private String ignoredErrorTypes;
     private String ignoredErrors;
+    private String kafkaHost;
+    private String kafkaPort;
 
     @Override
     public EventListenerProvider create(KeycloakSession aKeycloakSession) {
-        return new BpandaEventListenerProvider(this.identityHost, identityPort, producer, bpandaInfluxDBClient, aKeycloakSession, ignoredErrorTypes, ignoredErrors);
+        return new BpandaEventListenerProvider(this.identityHost, identityPort, producer, bpandaInfluxDBClient, aKeycloakSession, kafkaHost + ":" + kafkaPort, ignoredErrorTypes, ignoredErrors);
     }
 
     @Override
     public void init(Config.Scope config) {
-        String kafkaHost = System.getenv(KAFKA_HOST);
-        String kafkaPort = System.getenv(KAFKA_PORT);
+        kafkaHost = System.getenv(KAFKA_HOST);
+        kafkaPort = System.getenv(KAFKA_PORT);
         identityHost = System.getenv("IDENTITY_HOST");
         identityPort = System.getenv("IDENTITY_PORT");
         String ut = System.getenv("IDENTITY_UPDATE_TIMER");
@@ -64,7 +66,8 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
             Properties properties = getProperties(kafkaHost, kafkaPort);
             try {
                 producer = new KafkaProducer<>(properties);
-                adapter = new KafkaAdapter(producer, identityHost, identityPort);
+                adapter = new KafkaAdapter(producer, identityHost, identityPort, kafkaHost + ":" + kafkaPort);
+                log.info("Connected to Kafka Server at {}:{}", kafkaHost, kafkaPort);
             } catch (Exception e) {
                 log.error("cannot creat kafka producer {}", e.getMessage(), e);
             }

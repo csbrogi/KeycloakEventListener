@@ -40,8 +40,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
     private final List<String> ignoredErrors;
     private int eventCount = 0;
 
-    public BpandaEventListenerProvider(String identityHost, String identityPort, KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession, String ignoredErrorTypes, String ignoredErrors) {
-        this.kafkaAdapter = new KafkaAdapter(producer, identityHost, identityPort);
+    public BpandaEventListenerProvider(String identityHost, String identityPort, KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession, String kafkaHostAndPort, String ignoredErrorTypes, String ignoredErrors) {
+        this.kafkaAdapter = new KafkaAdapter(producer, identityHost, identityPort, kafkaHostAndPort);
         this.keycloakSession = keycloakSession;
         this.bpandaInfluxDBClient = bpandaInfluxDBClient;
         this.ignoredErrorTypes = List.of(ignoredErrorTypes.split(","));
