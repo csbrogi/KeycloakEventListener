@@ -147,7 +147,7 @@ public class BpandaInfluxDBClient {
     }
 
     public void logError(AdminEvent adminEvent, String realmId) {
-        String error = String.format("ERROR_%s %s - Realm: %s %s", adminEvent.getResourceType().toString(), adminEvent.getError(),  adminEvent.getRealmId(), adminEvent.getRealmName());
+        String error = String.format("ERROR_%s_%s - Realm: %s", adminEvent.getResourceType().toString(), adminEvent.getError().toUpperCase().replaceAll("-", "_"), adminEvent.getRealmName());
         String severity = "ERROR";
         StringBuilder cause = new StringBuilder(adminEvent.getError()).append( ": ");
         Map<String, String> details = adminEvent.getDetails();
