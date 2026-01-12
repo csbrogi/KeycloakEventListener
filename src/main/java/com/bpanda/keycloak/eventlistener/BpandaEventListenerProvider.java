@@ -153,7 +153,12 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         OperationType operationType = adminEvent.getOperationType();
         ResourceType resourceType = adminEvent.getResourceType();
         if (null != bpandaInfluxDBClient) {
-            bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
+            String error = adminEvent.getError();
+            if (error != null && !ignoredErrors.contains(error)) {
+                bpandaInfluxDBClient.logError(adminEvent, realmId);
+            } else {
+                bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
+            }
         }
         try {
             if (resourceType == ResourceType.USER && null != clientId && null != realm) {

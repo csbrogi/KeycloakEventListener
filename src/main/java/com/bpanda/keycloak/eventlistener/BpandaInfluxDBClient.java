@@ -4,6 +4,7 @@ import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
 import org.keycloak.events.Event;
+import org.keycloak.events.admin.AdminEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,4 +146,32 @@ public class BpandaInfluxDBClient {
         influxDB.close();
     }
 
+    public void logError(AdminEvent adminEvent, String realmId) {
+        String error = String.format("ERROR_%s %s - Realm: %s %s", adminEvent.getResourceType().toString(), adminEvent.getError(),  adminEvent.getRealmId(), adminEvent.getRealmName());
+        String severity = "ERROR";
+        StringBuilder cause = new StringBuilder(adminEvent.getError()).append( ": ");
+        Map<String, String> details = adminEvent.getDetails();
+        if (null != details && !details.isEmpty()) {
+            cause.append(details.entrySet().stream()
+                    .map(e-> e.getKey()+": "+e.getValue())
+                    .collect(Collectors.joining(", ")));
+        }
+
+        Point.Builder pb = Point.measurement("kc-errors").
+                tag("serviceName", this.influxdbDBServiceName).
+                tag("severity", severity).
+                tag("realm", adminEvent.getRealmName()).
+                addField("id", adminEvent.getId()).
+                addField("message", error).
+                addField("cause", cause.toString()).
+                time(adminEvent.getTime(), TimeUnit.MILLISECONDS);
+        try {
+            Thread newThread = new Thread(() -> {
+                influxDB.write(influxDBName, influxDBRetention, pb.build());
+            });
+            newThread.start();
+        } catch (Exception e) {
+            log.error("cannot write message to influx db:", e);
+        }
+    }
 }
