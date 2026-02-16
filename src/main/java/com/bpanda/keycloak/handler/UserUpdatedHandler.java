@@ -45,6 +45,7 @@ public class UserUpdatedHandler implements IKeycloakEventHandler {
     @Override
     public void handleRequest(KeycloakSession keycloakSession) {
         String updateUserId = null;
+        String updatedEmail = null;
         if (scimUser != null) {
             updateUserId = scimUser.getId();
         }
@@ -62,21 +63,13 @@ public class UserUpdatedHandler implements IKeycloakEventHandler {
                     }
                 } else if (operations != null && !operations.isEmpty()) {
                     updateUserId = userId;
-
-//                    Operation operation = operations.get(0);
-//                    if (operation.getPath().equalsIgnoreCase("active") && operation.getValue() != null && !operation.getValue().isEmpty()) {
-//                        if (operation.getValue().get(0)) {
-//                            attr = "lastEnableTimestamp";
-//                        } else {
-//                            attr = "lastDisableTimestamp";
-//                        }
-//                    }
                 }
+                updatedEmail = user.getEmail();
                 user.setSingleAttribute(attr, val);
             }
         }
 
-        if (updateUserId != null) {
+        if (updateUserId != null && updatedEmail != null) {
             EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(
                     EventMessages.ElementTypes.ELEMENT_USER_IDS, updateUserId);
             kafkaAdapter.send(realmName, "users.updated", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_CHANGED, affectedElement);

@@ -3,7 +3,6 @@ package com.bpanda.keycloak.eventlistener;
 import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.keycloak.models.RealmModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,18 +17,18 @@ public class KafkaAdapter {
     private static final String baseKafkaTopicName = "de.mid.keycloak.realm.";
     private final String identityPort;
     private final String identityHost;
-
+    private final String hostAndPort;
     // Events Datei wird im Verzeichnis
     // E:\bpanda-backend\modules\libs\event-protobuf\proto
     // mit dem Kommando
     // protoc --java_out=C:\Users\csbrogi\KeycloakEventListener\src\main\java  EventMessages.proto --proto_path=E:\bpanda-backend\modules\libs\wrapper-protobuf\proto;.
     // gebaut
 
-    public KafkaAdapter(KafkaProducer producer, String identityHost, String identityPort) {
+    public KafkaAdapter(KafkaProducer producer, String identityHost, String identityPort, String hostAndPort) {
         this.producer = producer;
         this.identityHost = identityHost;
         this.identityPort = identityPort;
-
+        this.hostAndPort = hostAndPort;
     }
 
     public void send(String realmName, String subTopic, EventMessages.EventTypes eventType, EventMessages.AffectedElement affectedElement) {
@@ -49,14 +48,19 @@ public class KafkaAdapter {
             ProducerRecord<String, byte[]> record = new ProducerRecord<>(baseKafkaTopicName + realmName, subTopic, ev.toByteArray());
             producer.send(record, (md, ex) -> {
                 if (ex != null) {
-                    System.err.println("exception occurred in producer for review :" + ev
-                            + ", exception is " + ex);
-                    ex.printStackTrace();
+                    handleException(ex, ev);
                 } else {
-                    System.out.println("Sent msg to " + md.partition() + " with offset " + md.offset() + " at " + md.timestamp());
+                    log.info("Sent msg to {} with offset {} at {}", md.partition(), md.offset(), md.timestamp());
                 }
             });
             producer.flush();
+        }
+    }
+
+    private void handleException(Exception ex, EventMessages.Event ev) {
+        log.error("exception occurred in producer for review :{}, exception is {}", ev, ex);
+        if ( ex instanceof org.apache.kafka.common.errors.TimeoutException) {
+            log.error("TimeoutException in Kafka producer - Kafka broker on " + hostAndPort + " not reachable? Check network connectivity and broker status.");
         }
     }
 
@@ -97,8 +101,7 @@ public class KafkaAdapter {
             ProducerRecord<String, byte[]> record = new ProducerRecord<>(baseKafkaTopicNameKeycloak + keycloakId, "realmsinfo", ev.toByteArray());
             producer.send(record, (md, ex) -> {
                 if (ex != null) {
-                    log.error("exception occurred in producer for review :{}, exception is ", ev, ex);
-                    ex.printStackTrace();
+                    handleException(ex, ev);
                 } else {
                     log.info("Sent msg to {} with offset {} at {}", md.partition(), md.offset(), md.timestamp());
                 }

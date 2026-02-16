@@ -40,8 +40,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
     private final List<String> ignoredErrors;
     private int eventCount = 0;
 
-    public BpandaEventListenerProvider(String identityHost, String identityPort, KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession, String ignoredErrorTypes, String ignoredErrors) {
-        this.kafkaAdapter = new KafkaAdapter(producer, identityHost, identityPort);
+    public BpandaEventListenerProvider(String identityHost, String identityPort, KafkaProducer producer, BpandaInfluxDBClient bpandaInfluxDBClient, KeycloakSession keycloakSession, String kafkaHostAndPort, String ignoredErrorTypes, String ignoredErrors) {
+        this.kafkaAdapter = new KafkaAdapter(producer, identityHost, identityPort, kafkaHostAndPort);
         this.keycloakSession = keycloakSession;
         this.bpandaInfluxDBClient = bpandaInfluxDBClient;
         this.ignoredErrorTypes = List.of(ignoredErrorTypes.split(","));
@@ -125,7 +125,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         if (type.endsWith("ERROR") && !ignoredErrorTypes.contains(type)) {
             ret = true;
         }
-        if (!ignoredErrors.contains(error)) {
+        if (ignoredErrors.contains(error)) {
             ret = false;
         }
         return ret;
@@ -153,7 +153,12 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         OperationType operationType = adminEvent.getOperationType();
         ResourceType resourceType = adminEvent.getResourceType();
         if (null != bpandaInfluxDBClient) {
-            bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
+            String error = adminEvent.getError();
+            if (error != null && !ignoredErrors.contains(error)) {
+                bpandaInfluxDBClient.logError(adminEvent, realmId);
+            } else {
+                bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
+            }
         }
         try {
             if (resourceType == ResourceType.USER && null != clientId && null != realm) {

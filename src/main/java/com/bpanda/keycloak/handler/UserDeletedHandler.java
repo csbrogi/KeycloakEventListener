@@ -26,23 +26,22 @@ public class UserDeletedHandler implements IKeycloakEventHandler {
             }
         } else {
             // this wouldn't work since the userId is a keycloak-Id not the cam-Id
+            // And in keycloak the user has gone :-(
 //            int pos = uri.getRawPath().lastIndexOf("/");
 //            if (pos > 0) {
 //                userId = uri.getRawPath().substring(pos + 1);
 //            } else {
 //                userId = null;
 //            }
-            userId = null;
+                userId = null;
         }
     }
 
     @Override
     public void handleRequest(KeycloakSession keycloakSession) {
-        if (userId != null) {
-            EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(
-                    EventMessages.ElementTypes.ELEMENT_USER_IDS, userId);
-            kafkaAdapter.send(realmName, "users.deleted", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_DELETED, affectedElement );
-        }
+        EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(
+                EventMessages.ElementTypes.ELEMENT_USER_IDS, userId);
+        kafkaAdapter.send(realmName, "users.deleted", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_DELETED, affectedElement);
     }
 
     @Override
