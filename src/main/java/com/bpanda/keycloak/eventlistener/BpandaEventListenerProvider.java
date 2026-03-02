@@ -152,14 +152,6 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         String clientSecret = null;
         OperationType operationType = adminEvent.getOperationType();
         ResourceType resourceType = adminEvent.getResourceType();
-        if (null != bpandaInfluxDBClient) {
-            String error = adminEvent.getError();
-            if (error != null && !ignoredErrors.contains(error)) {
-                bpandaInfluxDBClient.logError(adminEvent, realmId);
-            } else {
-                bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
-            }
-        }
         try {
             if (resourceType == ResourceType.USER && null != clientId && null != realm) {
                 ClientModel client = realm.getClientById(clientId);
@@ -169,9 +161,18 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 }
                 if (null != client) {
                     clientSecret = client.getSecret();
-                    log.info("RealmId: {}",realmId);
+                    log.info("RealmId: {}", realmId);
                 }
             }
+            if (null != bpandaInfluxDBClient) {
+                String error = adminEvent.getError();
+                if (error != null && !ignoredErrors.contains(error)) {
+                    bpandaInfluxDBClient.logError(adminEvent, clientId);
+                } else {
+                    bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
+                }
+            }
+
 
             String representation = adminEvent.getRepresentation();
 
@@ -195,7 +196,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                     log.info("Group {} LDAP/id Id {} Operation {} ", group, externalId, operationType.toString());
                 }
             }
-            if (resourceType == ResourceType.REALM && bpandaInfluxDBClient != null ) {
+            if (resourceType == ResourceType.REALM && bpandaInfluxDBClient != null) {
                 long realmCount = keycloakSession.realms().getRealmsStream().count();
                 log.info("Realm Operation Type: {}:{} realmCount = {}", operationType, representation, realmCount);
                 bpandaInfluxDBClient.logRealmCount(realmCount);

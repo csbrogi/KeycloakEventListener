@@ -146,7 +146,7 @@ public class BpandaInfluxDBClient {
         influxDB.close();
     }
 
-    public void logError(AdminEvent adminEvent, String realmId) {
+    public void logError(AdminEvent adminEvent, String clientId) {
         String error = String.format("ERROR_%s_%s - Realm: %s", adminEvent.getResourceType().toString(), adminEvent.getError().toUpperCase().replaceAll("-", "_"), adminEvent.getRealmName());
         String severity = "ERROR";
         StringBuilder cause = new StringBuilder(adminEvent.getError()).append( ": ");
@@ -165,6 +165,10 @@ public class BpandaInfluxDBClient {
                 addField("message", error).
                 addField("cause", cause.toString()).
                 time(adminEvent.getTime(), TimeUnit.MILLISECONDS);
+        if (null != clientId && !clientId.isEmpty()) {
+            pb.tag("client", clientId);
+        }
+
         try {
             Thread newThread = new Thread(() -> {
                 influxDB.write(influxDBName, influxDBRetention, pb.build());
