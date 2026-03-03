@@ -153,17 +153,6 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         OperationType operationType = adminEvent.getOperationType();
         ResourceType resourceType = adminEvent.getResourceType();
         try {
-            if (resourceType == ResourceType.USER && null != clientId && null != realm) {
-                ClientModel client = realm.getClientById(clientId);
-                if (client == null) {
-                    clientId = DEFAULT_CLIENT_ID;
-                    client = realm.getClientByClientId(clientId);
-                }
-                if (null != client) {
-                    clientSecret = client.getSecret();
-                    log.info("RealmId: {}", realmId);
-                }
-            }
             if (null != bpandaInfluxDBClient) {
                 String error = adminEvent.getError();
                 if (error != null && !ignoredErrors.contains(error)) {
@@ -172,15 +161,13 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                     bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
                 }
             }
-
-
             String representation = adminEvent.getRepresentation();
 
             URI url = keycloakSession.getContext().getUri().getRequestUri();
             String protocol = url.getScheme();
             String authority = url.getAuthority();
             String keycloakServer = String.format("%s://%s", protocol, authority);
-            KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId, clientSecret);
+            KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId);
             IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, representation, url);
             if (null != keycloakEventHandler && keycloakEventHandler.isValid()) {
                 keycloakEventHandler.handleRequest(keycloakSession);
@@ -206,11 +193,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         }
     }
 
-
-
     @Override
     public void close() {
-
     }
     private String toString(AdminEvent adminEvent) {
         return String.format("type=%s, realmId=%s", adminEvent.getResourceType(), adminEvent.getRealmId());
