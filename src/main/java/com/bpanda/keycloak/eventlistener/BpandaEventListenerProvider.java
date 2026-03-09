@@ -61,6 +61,25 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         if (null != event.getRealmName()) {
             realmName = event.getRealmName();
         }
+        if (eventType == EventType.CLIENT_LOGIN_ERROR && "invalid_client_credentials".equals(event.getError())) {
+            ClientModel client = keycloakSession.clients().getClientByClientId(realm, event.getClientId());
+            if (client != null) {
+                log.warn("Client {} failed to login with invalid credentials", client.getClientId());
+                String lastLoginError = client.getAttribute("lastLoginError");
+                if (lastLoginError != null) {
+                    try {
+                        ZonedDateTime lastLoginErrorTime = ZonedDateTime.parse(lastLoginError);
+                        if (ZonedDateTime.now(ZoneOffset.UTC).minusMinutes(5).isBefore(lastLoginErrorTime)) {
+                            log.warn("Client {} had a login error within the last 5 minutes, skipping logging to InfluxDB", client.getClientId());
+                            return;
+                        }
+                    } catch (DateTimeException ex) {
+                        log.error("Failed to parse lastLoginError timestamp for client {}: {}", client.getClientId(), ex.getMessage());
+                    }
+                }
+                client.setAttribute("lastLoginError", ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
+            }
+        }
         if (null != bpandaInfluxDBClient) {
             if (event.getType().toString().endsWith("ERROR")) {
                 bpandaInfluxDBClient.logError(event, isErrorEvent(event), realmName);
