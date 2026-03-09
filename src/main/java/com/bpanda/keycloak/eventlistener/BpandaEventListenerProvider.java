@@ -30,7 +30,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
 
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProvider.class);
 
-    private static final String DEFAULT_CLIENT_ID = "camp";
+//    private static final String DEFAULT_CLIENT_ID = "camp";
 
     private final KafkaAdapter kafkaAdapter;
     private final KeycloakSession keycloakSession;
@@ -69,8 +69,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                 if (lastLoginError != null) {
                     try {
                         ZonedDateTime lastLoginErrorTime = ZonedDateTime.parse(lastLoginError);
-                        if (ZonedDateTime.now(ZoneOffset.UTC).minusMinutes(5).isBefore(lastLoginErrorTime)) {
-                            log.warn("Client {} had a login error within the last 5 minutes, skipping logging to InfluxDB", client.getClientId());
+                        if (ZonedDateTime.now(ZoneOffset.UTC).minusHours(24).isBefore(lastLoginErrorTime)) {
+                            log.warn("Client {} had a login error within the last 24 hours, skipping logging to InfluxDB", client.getClientId());
                             return;
                         }
                     } catch (DateTimeException ex) {
@@ -168,7 +168,6 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             }
         }
 
-        String clientSecret = null;
         OperationType operationType = adminEvent.getOperationType();
         ResourceType resourceType = adminEvent.getResourceType();
         try {
