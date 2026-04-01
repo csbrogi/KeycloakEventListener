@@ -4,6 +4,7 @@ import com.bpanda.keycloak.handler.IKeycloakEventHandler;
 import com.bpanda.keycloak.handler.KeycloakEventHandlerFactory;
 import com.bpanda.keycloak.model.Group;
 import com.bpanda.keycloak.model.KeycloakData;
+import com.bpanda.keycloak.model.ScimGroup;
 import com.bpanda.keycloak.model.ScimUser;
 import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -175,14 +176,27 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             if (null != bpandaInfluxDBClient) {
                 String error = adminEvent.getError();
                 if (error != null && !ignoredErrors.contains(error)) {
-                    if (error.equals("scim-request-failed") && adminEvent.getResourceType() == ResourceType.USER) {
+                    if (error.equals("scim-request-failed")) {
                         try {
-                            String representation = adminEvent.getRepresentation().replaceAll("\\\\r\\\\\n", "").replaceAll("\\\\\"", "");
-                            ScimUser scimUser = ScimUser.getFromResource(representation);
-                            if (null != scimUser) {
-                                bpandaInfluxDBClient.logError(adminEvent, scimUser, clientId);
-                                return;
+                            String representation = adminEvent.getRepresentation().replaceAll("\\\\r\\\\n", "")
+                                    .replaceAll("\\\\\"", "\"")
+                                    .trim()
+                                    .replaceAll("^\"|\"$", "");
+                            if (adminEvent.getResourceType() == ResourceType.USER) {
+                                ScimUser scimUser = ScimUser.getFromResource(representation);
+                                if (null != scimUser) {
+                                    bpandaInfluxDBClient.logError(adminEvent, scimUser, clientId);
+                                    return;
+                                }
+                            } else if  (adminEvent.getResourceType() == ResourceType.GROUP) {
+                                ScimGroup scimGroup = ScimGroup.getFromResource(representation);
+                                if (null != scimGroup) {
+                                    bpandaInfluxDBClient.logError(adminEvent, scimGroup, clientId);
+                                    return;
+                                }
+                                log.error("SCIM request failed for resource type {}: {}", resourceType, representation);
                             }
+
                         } catch (Exception ex) {
                             log.error("Failed to parse SCIM user from admin event representation: {}", ex.getMessage());
                         }

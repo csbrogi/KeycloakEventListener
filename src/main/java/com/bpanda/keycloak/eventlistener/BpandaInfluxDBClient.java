@@ -1,5 +1,6 @@
 package com.bpanda.keycloak.eventlistener;
 
+import com.bpanda.keycloak.model.ScimGroup;
 import com.bpanda.keycloak.model.ScimUser;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
@@ -186,6 +187,18 @@ public class BpandaInfluxDBClient {
     public void logError(AdminEvent adminEvent, ScimUser scimUser, String clientId) {
         StringBuilder cause = new StringBuilder(adminEvent.getError()).append( ": ");
         cause.append("User: ").append(scimUser.getEmail()).append(" id=").append(scimUser.getId()).append(" - ");
+        Map<String, String> details = adminEvent.getDetails();
+        if (null != details && !details.isEmpty()) {
+            cause.append(details.entrySet().stream()
+                    .map(e-> e.getKey()+": "+e.getValue())
+                    .collect(Collectors.joining(", ")));
+        }
+        logErrorMessage(adminEvent, clientId, cause);
+    }
+
+    public void logError(AdminEvent adminEvent, ScimGroup scimGroup, String clientId) {
+        StringBuilder cause = new StringBuilder(adminEvent.getError()).append( ": ");
+        cause.append("Group: ").append(scimGroup.getDisplayName()).append(" id=").append(scimGroup.getId()).append(" - ");
         Map<String, String> details = adminEvent.getDetails();
         if (null != details && !details.isEmpty()) {
             cause.append(details.entrySet().stream()
