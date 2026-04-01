@@ -1,5 +1,6 @@
 package com.bpanda.keycloak.eventlistener;
 
+import com.bpanda.keycloak.model.ScimUser;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
@@ -147,8 +148,6 @@ public class BpandaInfluxDBClient {
     }
 
     public void logError(AdminEvent adminEvent, String clientId) {
-        String error = String.format("ERROR_%s_%s - Realm: %s", adminEvent.getResourceType().toString(), adminEvent.getError().toUpperCase().replaceAll("-", "_"), adminEvent.getRealmName());
-        String severity = "ERROR";
         StringBuilder cause = new StringBuilder(adminEvent.getError()).append( ": ");
         Map<String, String> details = adminEvent.getDetails();
         if (null != details && !details.isEmpty()) {
@@ -157,9 +156,14 @@ public class BpandaInfluxDBClient {
                     .collect(Collectors.joining(", ")));
         }
 
+        logErrorMessage(adminEvent, clientId, cause);
+    }
+
+    private void logErrorMessage(AdminEvent adminEvent, String clientId, StringBuilder cause) {
+        String error = String.format("ERROR_%s_%s - Realm: %s", adminEvent.getResourceType().toString(), adminEvent.getError().toUpperCase().replace("-", "_"), adminEvent.getRealmName());
         Point.Builder pb = Point.measurement("kc-errors").
                 tag("serviceName", this.influxdbDBServiceName).
-                tag("severity", severity).
+                tag("severity", "ERROR").
                 tag("realm", adminEvent.getRealmName()).
                 addField("id", adminEvent.getId()).
                 addField("message", error).
@@ -177,5 +181,17 @@ public class BpandaInfluxDBClient {
         } catch (Exception e) {
             log.error("cannot write message to influx db:", e);
         }
+    }
+
+    public void logError(AdminEvent adminEvent, ScimUser scimUser, String clientId) {
+        StringBuilder cause = new StringBuilder(adminEvent.getError()).append( ": ");
+        cause.append("User: ").append(scimUser.getEmail()).append(" id=").append(scimUser.getId()).append(" - ");
+        Map<String, String> details = adminEvent.getDetails();
+        if (null != details && !details.isEmpty()) {
+            cause.append(details.entrySet().stream()
+                    .map(e-> e.getKey()+": "+e.getValue())
+                    .collect(Collectors.joining(", ")));
+        }
+        logErrorMessage(adminEvent, clientId, cause);
     }
 }

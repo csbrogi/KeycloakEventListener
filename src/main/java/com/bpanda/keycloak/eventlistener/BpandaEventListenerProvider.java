@@ -4,6 +4,7 @@ import com.bpanda.keycloak.handler.IKeycloakEventHandler;
 import com.bpanda.keycloak.handler.KeycloakEventHandlerFactory;
 import com.bpanda.keycloak.model.Group;
 import com.bpanda.keycloak.model.KeycloakData;
+import com.bpanda.keycloak.model.ScimUser;
 import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.keycloak.events.Event;
@@ -174,6 +175,18 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             if (null != bpandaInfluxDBClient) {
                 String error = adminEvent.getError();
                 if (error != null && !ignoredErrors.contains(error)) {
+                    if (error.equals("scim-request-failed") && adminEvent.getResourceType() == ResourceType.USER) {
+                        try {
+                            String representation = adminEvent.getRepresentation().replaceAll("\\\\r\\\\\n", "").replaceAll("\\\\\"", "");
+                            ScimUser scimUser = ScimUser.getFromResource(representation);
+                            if (null != scimUser) {
+                                bpandaInfluxDBClient.logError(adminEvent, scimUser, clientId);
+                                return;
+                            }
+                        } catch (Exception ex) {
+                            log.error("Failed to parse SCIM user from admin event representation: {}", ex.getMessage());
+                        }
+                    }
                     bpandaInfluxDBClient.logError(adminEvent, clientId);
                 } else {
                     bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
