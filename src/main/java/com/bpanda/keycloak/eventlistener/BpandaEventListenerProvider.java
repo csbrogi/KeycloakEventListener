@@ -2,12 +2,11 @@ package com.bpanda.keycloak.eventlistener;
 
 import com.bpanda.keycloak.handler.IKeycloakEventHandler;
 import com.bpanda.keycloak.handler.KeycloakEventHandlerFactory;
-import com.bpanda.keycloak.model.Group;
-import com.bpanda.keycloak.model.KeycloakData;
-import com.bpanda.keycloak.model.ScimGroup;
-import com.bpanda.keycloak.model.ScimUser;
+import com.bpanda.keycloak.model.*;
 import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.keycloak.email.EmailException;
+import org.keycloak.email.EmailTemplateProvider;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
@@ -26,8 +25,8 @@ import java.time.DateTimeException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 public class BpandaEventListenerProvider implements EventListenerProvider {
 
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProvider.class);
@@ -60,6 +59,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         boolean handled = false;
         String realmName = event.getRealmId();
         RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
+
         if (null != event.getRealmName()) {
             realmName = event.getRealmName();
         }
@@ -110,6 +110,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                     case LOGIN:
                         try {
                             setUserTimeStamp(user, "lastLoginTimestamp");
+                            setUserLoginFailureCount(user, 0);
                             handled = true;
                         } catch (DateTimeException ex) {
                             log.error("setUserTimeStamp: ", ex);
@@ -117,10 +118,14 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                         break;
                     case LOGIN_ERROR:
                         try {
-                            setUserTimeStamp(user, "lastLoginFailureTimestamp");
+                            String recipientEmail = "c.brogi@mid.de";
+                            String recipientRealmName = "MID";
+                            sendLoginFailureEmail(event, user, recipientRealmName, recipientEmail, eventType, realm);
                             handled = true;
                         } catch (DateTimeException ex) {
                             log.error("setUserTimeStamp (lastLoginFailureTimestamp): ", ex);
+                        } catch (EmailException e) {
+                            throw new RuntimeException(e);
                         }
                         break;
                     case REGISTER:
@@ -139,6 +144,27 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         log.info("Event Occurred: {} handled: {}", toString(event), handled);
     }
 
+    private void sendLoginFailureEmail(Event event, UserModel user, String recipientRealmName, String recipientEmail, EventType eventType, RealmModel realm) throws EmailException {
+        setUserTimeStamp(user, "lastLoginFailureTimestamp");
+        int loginFailureCount = getUserLoginFailureCount(user);
+        setUserLoginFailureCount(user, loginFailureCount + 1);
+
+        if (loginFailureCount > 5) {
+            Map<String, Object> attributes = new HashMap<>();
+            attributes.put("event", new EventBean(event, user.getEmail(), loginFailureCount));
+            EmailTemplateProvider emailTemplateProvider = keycloakSession.getProvider(EmailTemplateProvider.class);
+            RealmModel recipientRealm = keycloakSession.realms().getRealmByName(recipientRealmName);
+            if (null != recipientRealm) {
+                UserModel recipient = keycloakSession.users().getUserByEmail(recipientRealm, recipientEmail);
+
+                if (recipient != null) {
+                    emailTemplateProvider.setRealm(realm).setUser(recipient).send("Repeated login Failures for User " + user.getEmail(), "login-error.ftl", attributes);
+                }
+            }
+            EMailUser eMailUser = new EMailUser("c.brogi+emailuser@mid.de");
+            emailTemplateProvider.setRealm(realm).setUser(eMailUser).send("Repeated login Failures for User " + user.getEmail(), "login-error.ftl", attributes);
+        }
+    }
     private boolean isErrorEvent(Event event) {
         boolean ret = false;
         String type = event.getType().toString();
@@ -254,6 +280,18 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             log.error("setUserTimeStamp  {}: Something went wrong", timestampName, e);
         }
     }
+    private void setUserLoginFailureCount(UserModel user, int count) {
+        user.setSingleAttribute("loginFailure", String.valueOf(count));
+    }
+
+    private int getUserLoginFailureCount(UserModel user) {
+        String strVal = user.getFirstAttribute("loginFailure");
+        if (strVal == null) {
+            return 0;
+        }
+        return Integer.parseInt(strVal);
+    }
+
 
     private String toString(Event event) {
         StringBuilder sb = new StringBuilder();
