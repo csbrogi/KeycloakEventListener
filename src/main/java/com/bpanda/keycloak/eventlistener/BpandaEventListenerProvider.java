@@ -13,7 +13,6 @@ import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -63,25 +62,6 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         if (null != event.getRealmName()) {
             realmName = event.getRealmName();
         }
-        if (eventType == EventType.CLIENT_LOGIN_ERROR && "invalid_client_credentials".equals(event.getError())) {
-            ClientModel client = keycloakSession.clients().getClientByClientId(realm, event.getClientId());
-            if (client != null) {
-                log.warn("Client {} failed to login with invalid credentials", client.getClientId());
-                String lastLoginError = client.getAttribute("lastLoginError");
-                if (lastLoginError != null) {
-                    try {
-                        ZonedDateTime lastLoginErrorTime = ZonedDateTime.parse(lastLoginError);
-                        if (ZonedDateTime.now(ZoneOffset.UTC).minusHours(24).isBefore(lastLoginErrorTime)) {
-                            log.warn("Client {} had a login error within the last 24 hours, skipping logging to InfluxDB", client.getClientId());
-                            return;
-                        }
-                    } catch (DateTimeException ex) {
-                        log.error("Failed to parse lastLoginError timestamp for client {}: {}", client.getClientId(), ex.getMessage());
-                    }
-                }
-                client.setAttribute("lastLoginError", ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
-            }
-        }
         if (null != bpandaInfluxDBClient) {
             if (event.getType().toString().endsWith("ERROR")) {
                 bpandaInfluxDBClient.logError(event, isErrorEvent(event), realmName);
@@ -118,14 +98,10 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                         break;
                     case LOGIN_ERROR:
                         try {
-                            String recipientEmail = "c.brogi@mid.de";
-                            String recipientRealmName = "MID";
-                            sendLoginFailureEmail(event, user, recipientRealmName, recipientEmail, eventType, realm);
+                            setUserTimeStamp(user, "lastLoginFailureTimestamp");
                             handled = true;
                         } catch (DateTimeException ex) {
                             log.error("setUserTimeStamp (lastLoginFailureTimestamp): ", ex);
-                        } catch (EmailException e) {
-                            throw new RuntimeException(e);
                         }
                         break;
                     case REGISTER:
@@ -144,7 +120,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         log.info("Event Occurred: {} handled: {}", toString(event), handled);
     }
 
-    private void sendLoginFailureEmail(Event event, UserModel user, String recipientRealmName, String recipientEmail, EventType eventType, RealmModel realm) throws EmailException {
+    private void sendLoginFailureEmail(Event event, UserModel user, String recipientRealmName, String recipientEmail, RealmModel realm) throws EmailException {
         setUserTimeStamp(user, "lastLoginFailureTimestamp");
         int loginFailureCount = getUserLoginFailureCount(user);
         setUserLoginFailureCount(user, loginFailureCount + 1);
