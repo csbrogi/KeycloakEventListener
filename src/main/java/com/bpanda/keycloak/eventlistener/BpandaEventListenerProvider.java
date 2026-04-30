@@ -195,6 +195,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                                 if (null != scimGroup) {
                                     bpandaInfluxDBClient.logError(adminEvent, scimGroup, clientId);
                                     return;
+                                } else {
+                                    bpandaInfluxDBClient.logError(adminEvent, clientId);
                                 }
                                 log.error("SCIM request failed for resource type {}: {}", resourceType, representation);
                             }
