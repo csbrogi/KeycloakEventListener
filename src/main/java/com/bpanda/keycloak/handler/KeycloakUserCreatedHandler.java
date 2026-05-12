@@ -32,8 +32,14 @@ public class KeycloakUserCreatedHandler implements IKeycloakEventHandler {
     public void handleRequest(KeycloakSession keycloakSession) {
         String userId = null;
         if (keycloakUser != null && keycloakUser.isValid()) {
-            RealmModel realm = keycloakSession.realms().getRealm(keycloakData.getRealmName());
-            UserModel user = keycloakSession.users().getUserByEmail(realm, keycloakUser.getEmail());
+            RealmModel realmModel = keycloakSession.realms().getRealm(keycloakData.getRealmName());
+            if (null == realmModel) {
+                realmModel = keycloakSession.realms().getRealmByName(realmName);
+            }
+            UserModel user = null;
+            if (realmModel != null) {
+                user = keycloakSession.users().getUserByEmail(realmModel, keycloakUser.getEmail());
+            }
             if (user != null) {
                 userId = user.getId();
                 try {

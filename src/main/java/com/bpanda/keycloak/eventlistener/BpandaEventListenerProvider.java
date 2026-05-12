@@ -2,17 +2,17 @@ package com.bpanda.keycloak.eventlistener;
 
 import com.bpanda.keycloak.handler.IKeycloakEventHandler;
 import com.bpanda.keycloak.handler.KeycloakEventHandlerFactory;
-import com.bpanda.keycloak.model.Group;
-import com.bpanda.keycloak.model.KeycloakData;
+import com.bpanda.keycloak.model.*;
 import de.mid.smartfacts.bpm.dtos.event.v1.EventMessages;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.keycloak.email.EmailException;
+import org.keycloak.email.EmailTemplateProvider;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -24,13 +24,13 @@ import java.time.DateTimeException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 public class BpandaEventListenerProvider implements EventListenerProvider {
 
     private static final Logger log = LoggerFactory.getLogger(BpandaEventListenerProvider.class);
 
-    private static final String DEFAULT_CLIENT_ID = "camp";
+//    private static final String DEFAULT_CLIENT_ID = "camp";
 
     private final KafkaAdapter kafkaAdapter;
     private final KeycloakSession keycloakSession;
@@ -58,6 +58,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         boolean handled = false;
         String realmName = event.getRealmId();
         RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
+
         if (null != event.getRealmName()) {
             realmName = event.getRealmName();
         }
@@ -89,6 +90,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                     case LOGIN:
                         try {
                             setUserTimeStamp(user, "lastLoginTimestamp");
+                            setUserLoginFailureCount(user, 0);
                             handled = true;
                         } catch (DateTimeException ex) {
                             log.error("setUserTimeStamp: ", ex);
@@ -118,6 +120,27 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         log.info("Event Occurred: {} handled: {}", toString(event), handled);
     }
 
+    private void sendLoginFailureEmail(Event event, UserModel user, String recipientRealmName, String recipientEmail, RealmModel realm) throws EmailException {
+        setUserTimeStamp(user, "lastLoginFailureTimestamp");
+        int loginFailureCount = getUserLoginFailureCount(user);
+        setUserLoginFailureCount(user, loginFailureCount + 1);
+
+        if (loginFailureCount > 5) {
+            Map<String, Object> attributes = new HashMap<>();
+            attributes.put("event", new EventBean(event, user.getEmail(), loginFailureCount));
+            EmailTemplateProvider emailTemplateProvider = keycloakSession.getProvider(EmailTemplateProvider.class);
+            RealmModel recipientRealm = keycloakSession.realms().getRealmByName(recipientRealmName);
+            if (null != recipientRealm) {
+                UserModel recipient = keycloakSession.users().getUserByEmail(recipientRealm, recipientEmail);
+
+                if (recipient != null) {
+                    emailTemplateProvider.setRealm(realm).setUser(recipient).send("Repeated login Failures for User " + user.getEmail(), "login-error.ftl", attributes);
+                }
+            }
+            EMailUser eMailUser = new EMailUser("c.brogi+emailuser@mid.de");
+            emailTemplateProvider.setRealm(realm).setUser(eMailUser).send("Repeated login Failures for User " + user.getEmail(), "login-error.ftl", attributes);
+        }
+    }
     private boolean isErrorEvent(Event event) {
         boolean ret = false;
         String type = event.getType().toString();
@@ -149,37 +172,51 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             }
         }
 
-        String clientSecret = null;
         OperationType operationType = adminEvent.getOperationType();
         ResourceType resourceType = adminEvent.getResourceType();
-        if (null != bpandaInfluxDBClient) {
-            String error = adminEvent.getError();
-            if (error != null && !ignoredErrors.contains(error)) {
-                bpandaInfluxDBClient.logError(adminEvent, realmId);
-            } else {
-                bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
-            }
-        }
         try {
-            if (resourceType == ResourceType.USER && null != clientId && null != realm) {
-                ClientModel client = realm.getClientById(clientId);
-                if (client == null) {
-                    clientId = DEFAULT_CLIENT_ID;
-                    client = realm.getClientByClientId(clientId);
-                }
-                if (null != client) {
-                    clientSecret = client.getSecret();
-                    log.info("RealmId: {}",realmId);
+            if (null != bpandaInfluxDBClient) {
+                String error = adminEvent.getError();
+                if (error != null && !ignoredErrors.contains(error)) {
+                    if (error.equals("scim-request-failed")) {
+                        try {
+                            String representation = adminEvent.getRepresentation().replaceAll("\\\\r\\\\n", "")
+                                    .replaceAll("\\\\\"", "\"")
+                                    .trim()
+                                    .replaceAll("^\"|\"$", "");
+                            if (adminEvent.getResourceType() == ResourceType.USER) {
+                                ScimUser scimUser = ScimUser.getFromResource(representation);
+                                if (null != scimUser) {
+                                    bpandaInfluxDBClient.logError(adminEvent, scimUser, clientId);
+                                    return;
+                                }
+                            } else if  (adminEvent.getResourceType() == ResourceType.GROUP) {
+                                ScimGroup scimGroup = ScimGroup.getFromResource(representation);
+                                if (null != scimGroup) {
+                                    bpandaInfluxDBClient.logError(adminEvent, scimGroup, clientId);
+                                    return;
+                                } else {
+                                    bpandaInfluxDBClient.logError(adminEvent, clientId);
+                                }
+                                log.error("SCIM request failed for resource type {}: {}", resourceType, representation);
+                            }
+
+                        } catch (Exception ex) {
+                            log.error("Failed to parse SCIM user from admin event representation: {}", ex.getMessage());
+                        }
+                    }
+                    bpandaInfluxDBClient.logError(adminEvent, clientId);
+                } else {
+                    bpandaInfluxDBClient.logInfo(adminEvent.getId(), resourceType.toString(), operationType.toString(), adminEvent.getTime(), realmId, clientId);
                 }
             }
-
             String representation = adminEvent.getRepresentation();
 
             URI url = keycloakSession.getContext().getUri().getRequestUri();
             String protocol = url.getScheme();
             String authority = url.getAuthority();
             String keycloakServer = String.format("%s://%s", protocol, authority);
-            KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId, clientSecret);
+            KeycloakData keycloakData = KeycloakData.create(keycloakServer, realmId);
             IKeycloakEventHandler keycloakEventHandler = KeycloakEventHandlerFactory.create(resourceType, operationType, kafkaAdapter, keycloakData, representation, url);
             if (null != keycloakEventHandler && keycloakEventHandler.isValid()) {
                 keycloakEventHandler.handleRequest(keycloakSession);
@@ -195,7 +232,7 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
                     log.info("Group {} LDAP/id Id {} Operation {} ", group, externalId, operationType.toString());
                 }
             }
-            if (resourceType == ResourceType.REALM && bpandaInfluxDBClient != null ) {
+            if (resourceType == ResourceType.REALM && bpandaInfluxDBClient != null) {
                 long realmCount = keycloakSession.realms().getRealmsStream().count();
                 log.info("Realm Operation Type: {}:{} realmCount = {}", operationType, representation, realmCount);
                 bpandaInfluxDBClient.logRealmCount(realmCount);
@@ -205,11 +242,8 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
         }
     }
 
-
-
     @Override
     public void close() {
-
     }
     private String toString(AdminEvent adminEvent) {
         return String.format("type=%s, realmId=%s", adminEvent.getResourceType(), adminEvent.getRealmId());
@@ -224,6 +258,18 @@ public class BpandaEventListenerProvider implements EventListenerProvider {
             log.error("setUserTimeStamp  {}: Something went wrong", timestampName, e);
         }
     }
+    private void setUserLoginFailureCount(UserModel user, int count) {
+        user.setSingleAttribute("loginFailure", String.valueOf(count));
+    }
+
+    private int getUserLoginFailureCount(UserModel user) {
+        String strVal = user.getFirstAttribute("loginFailure");
+        if (strVal == null) {
+            return 0;
+        }
+        return Integer.parseInt(strVal);
+    }
+
 
     private String toString(Event event) {
         StringBuilder sb = new StringBuilder();

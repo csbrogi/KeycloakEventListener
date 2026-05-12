@@ -51,7 +51,13 @@ public class UserUpdatedHandler implements IKeycloakEventHandler {
         }
         if (userId != null) {
             RealmModel realmModel = keycloakSession.realms().getRealm(realmName);
-            UserModel user = keycloakSession.users().getUserById(realmModel, userId);
+            if (null == realmModel) {
+                realmModel = keycloakSession.realms().getRealmByName(realmName);
+            }
+            UserModel user = null;
+            if (realmModel != null) {
+                user = keycloakSession.users().getUserById(realmModel, userId);
+            }
             String val = ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT);
             if (user != null) {
                 String attr = "lastModifiedTimestamp";

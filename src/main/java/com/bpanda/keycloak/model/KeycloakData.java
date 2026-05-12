@@ -2,17 +2,15 @@ package com.bpanda.keycloak.model;
 
 public class KeycloakData {
     private String keycloakServer;
-    private String clientSecret;
     private String realmName;
 
-    public KeycloakData(String keycloakServer, String clientSecret, String realmName) {
+    public KeycloakData(String keycloakServer, String realmName) {
         this.keycloakServer = keycloakServer;
-        this.clientSecret = clientSecret;
         this.realmName = realmName;
     }
 
-    public static KeycloakData create(String keycloakServer, String realmId, String clientSecret) {
-        return  new KeycloakData(keycloakServer, clientSecret, realmId);
+    public static KeycloakData create(String keycloakServer, String realmId) {
+        return  new KeycloakData(keycloakServer, realmId);
     }
 
     public String getRealmName() {
@@ -27,15 +25,4 @@ public class KeycloakData {
         return keycloakServer;
     }
 
-    public void setKeycloakServer(String keycloakServer) {
-        this.keycloakServer = keycloakServer;
-    }
-
-    public String getClientSecret() {
-        return clientSecret;
-    }
-
-    public void setClientSecret(String clientSecret) {
-        this.clientSecret = clientSecret;
-    }
 }
