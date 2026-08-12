@@ -24,7 +24,7 @@ public class RealmActionHandler implements IKeycloakEventHandler {
         if (realmAction != null) {
             String action = realmAction.getAction();
 
-            log.info(String.format("REALM action %s changes %b => %s", action, realmAction.hasChanges(), realmAction));
+            log.info("REALM action {} changes {} => {}", action, realmAction.hasChanges(), realmAction);
         }
     }
 
