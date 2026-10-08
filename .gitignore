@@ -1,2 +1,7 @@
 /target/
 /tmp/
+/.claude/
+/.idea/
+*.iml
+/dependency-reduced-pom.xml
+/org/
