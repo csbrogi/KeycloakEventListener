@@ -32,6 +32,14 @@ public class GroupDeletedHandler implements IKeycloakEventHandler {
 
     @Override
     public void handleRequest(KeycloakSession keycloakSession) {
+        if (!isValid()) {
+            log.warn("Group delete ignored - no group id available (id: {})", groupId);
+            return;
+        }
+        if (scimGroup == null || scimGroup.getDisplayName() == null) {
+            log.info("Group delete not published - no display name available (id: {})", groupId);
+            return;
+        }
         EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(EventMessages.ElementTypes.ELEMENT_GROUP_NAME, scimGroup.getDisplayName());
 
         kafkaAdapter.send(realmName, "groups.deleted", EventMessages.EventTypes.EVENT_KEYCLOAK_GROUPS_DELETED, affectedElement );
@@ -40,6 +48,7 @@ public class GroupDeletedHandler implements IKeycloakEventHandler {
 
     @Override
     public boolean isValid() {
+        // Don't check for displayName, since it is not set if called from GUI
         return groupId != null && !groupId.isEmpty();
     }
 }

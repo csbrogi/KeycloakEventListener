@@ -67,7 +67,7 @@ public class UserUpdatedHandler implements IKeycloakEventHandler {
                     } else {
                         attr = "lastDisableTimestamp";
                     }
-                } else if (operations != null && !operations.isEmpty()) {
+                } else if (hasPathOperations()) {
                     updateUserId = userId;
                 }
                 updatedEmail = user.getEmail();
@@ -82,10 +82,19 @@ public class UserUpdatedHandler implements IKeycloakEventHandler {
         }
     }
 
+    /**
+     * a SCIM PATCH request carries operations with a path; a plain user object is also
+     * parsed as a single operation but has no path
+     */
+    private boolean hasPathOperations() {
+        return operations != null && !operations.isEmpty() && operations.get(0).getPath() != null;
+    }
+
     @Override
     public boolean isValid() {
         if (enableState != null) return true;
-        if (operations != null && !operations.isEmpty()) return operations.get(0).getPath() != null;
+        if (hasPathOperations()) return true;
         return scimUser != null  && scimUser.isValid() ||
-                keycloakUser != null && keycloakUser.isValid();    }
+                keycloakUser != null && keycloakUser.isValid();
+    }
 }

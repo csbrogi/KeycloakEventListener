@@ -10,10 +10,12 @@ public class RealmAction {
     }
 
     public static RealmAction getFromResource(String representation) {
-        ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        try {
-            return objectMapper.readValue(representation, RealmAction.class);
-        } catch (IOException ignored) {
+        if (representation != null && !representation.isEmpty()) {
+            ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            try {
+                return objectMapper.readValue(representation, RealmAction.class);
+            } catch (IOException ignored) {
+            }
         }
         return null;
     }
@@ -23,7 +25,7 @@ public class RealmAction {
     private UserSyncResult result;
 
     public boolean hasChanges() {
-        return result.hasChanges();
+        return result != null && result.hasChanges();
     }
 
     public String getAction() {
@@ -46,7 +48,7 @@ public class RealmAction {
     public String toString() {
         return "RealmAction{" +
                 "action='" + action + '\'' +
-                ", result=" + result.toString() +
+                ", result=" + result +
                 '}';
     }
 }

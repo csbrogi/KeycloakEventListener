@@ -30,6 +30,10 @@ public class RealmActionHandler implements IKeycloakEventHandler {
 
     @Override
     public void handleRequest(KeycloakSession keycloakSession) throws IOException {
+        if (!isValid()) {
+            log.warn("REALM action ignored - missing or unknown action: {}", realmAction);
+            return;
+        }
         String action = realmAction.getAction();
         log.info(String.format("REALM action %s changes %b => %s", action, realmAction.hasChanges(), realmAction));
         if (realmAction.hasChanges()) {
@@ -41,7 +45,10 @@ public class RealmActionHandler implements IKeycloakEventHandler {
 
     @Override
     public boolean isValid() {
+        if (realmAction == null) {
+            return false;
+        }
         String action = realmAction.getAction();
-        return action.equals("triggerChangedUsersSync") || action.equals("triggerFullSync");
+        return "triggerChangedUsersSync".equals(action) || "triggerFullSync".equals(action);
     }
 }
