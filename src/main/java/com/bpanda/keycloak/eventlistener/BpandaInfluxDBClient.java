@@ -45,6 +45,22 @@ public class BpandaInfluxDBClient {
     }
 
 
+    private void writeAsync(Point.Builder pb, String errorMessage) {
+        try {
+            Point point = pb.build();
+            Thread newThread = new Thread(() -> {
+                try {
+                    influxDB.write(influxDBName, influxDBRetention, point);
+                } catch (Exception e) {
+                    log.error(errorMessage, e);
+                }
+            });
+            newThread.start();
+        } catch (Exception e) {
+            log.error(errorMessage, e);
+        }
+    }
+
     public  void logError(Event event, boolean isErrorEvent, String realmName){
         String clientId = event.getClientId();
         if (null == clientId || clientId.isEmpty()) {
@@ -69,14 +85,7 @@ public class BpandaInfluxDBClient {
                 addField("message", error).
                 addField("cause", cause.toString()).
                 time(event.getTime(), TimeUnit.MILLISECONDS);
-        try {
-            Thread newThread = new Thread(() -> {
-                influxDB.write(influxDBName, influxDBRetention, pb.build());
-            });
-            newThread.start();
-        } catch (Exception e) {
-            log.error("cannot write message to influx db:", e);
-        }
+        writeAsync(pb, "cannot write message to influx db:");
     }
 
     public void logInfo(String eventId, String category, String operation, long eventTime, String realm, String clientId) {
@@ -97,14 +106,7 @@ public class BpandaInfluxDBClient {
         if (null != operation) {
             pb.tag("operation", operation);
         }
-        try {
-            Thread newThread = new Thread(() -> {
-                influxDB.write(influxDBName, influxDBRetention, pb.build());
-            });
-            newThread.start();
-        } catch (Exception e) {
-            log.error("cannot write info to influx db:", e);
-        }
+        writeAsync(pb, "cannot write info to influx db:");
     }
 
     public void logStartInfo(String eventId) {
@@ -135,14 +137,7 @@ public class BpandaInfluxDBClient {
                 addField("id", UUID.randomUUID().toString()).
                 time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
 
-        try {
-            Thread newThread = new Thread(() -> {
-                influxDB.write(influxDBName, influxDBRetention, pb.build());
-            });
-            newThread.start();
-        } catch (Exception e) {
-            log.error("cannot write info to influx db:", e);
-        }
+        writeAsync(pb, "cannot write info to influx db:");
     }
     public void close() {
         influxDB.close();
@@ -174,14 +169,7 @@ public class BpandaInfluxDBClient {
             pb.tag("client", clientId);
         }
 
-        try {
-            Thread newThread = new Thread(() -> {
-                influxDB.write(influxDBName, influxDBRetention, pb.build());
-            });
-            newThread.start();
-        } catch (Exception e) {
-            log.error("cannot write message to influx db:", e);
-        }
+        writeAsync(pb, "cannot write message to influx db:");
     }
 
     public void logError(AdminEvent adminEvent, ScimUser scimUser, String clientId) {

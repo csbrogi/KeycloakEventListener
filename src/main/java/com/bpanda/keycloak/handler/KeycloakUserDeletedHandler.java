@@ -26,7 +26,7 @@ public class KeycloakUserDeletedHandler implements IKeycloakEventHandler {
 
     @Override
     public void handleRequest(KeycloakSession keycloakSession) {
-        if (userId != null) {
+        if (isValid()) {
             EventMessages.AffectedElement affectedElement = kafkaAdapter.createAffectedElement(
                     EventMessages.ElementTypes.ELEMENT_USER_IDS, userId);
             kafkaAdapter.send(realmName, "users.deleted", EventMessages.EventTypes.EVENT_KEYCLOAK_USERS_DELETED, affectedElement );

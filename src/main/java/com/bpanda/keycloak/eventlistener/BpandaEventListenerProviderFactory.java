@@ -88,7 +88,9 @@ public class BpandaEventListenerProviderFactory implements EventListenerProvider
         String influxUrl = String.format("https://%s:%s", influxDBHost, influxDBPort);
 
 
-        if (null != influxdbDBName && !influxdbDBName.isEmpty()) {
+        if (null != influxdbDBName && !influxdbDBName.isEmpty() && (null == influxDBSecret || influxDBSecret.isEmpty())) {
+            log.warn("MONITORING_INFLUXDB_SECRET not set - no influxdb connection");
+        } else if (null != influxdbDBName && !influxdbDBName.isEmpty()) {
             log.info("Connecting to InfluxDB URL: {} Databasename {} ServiceName {} RetentionPolicy {}", influxUrl, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy);
             bpandaInfluxDBClient = BpandaInfluxDBClient.createBpandaInfluxDBClient(influxUrl, influxDBUser, influxDBSecret, influxdbDBName, influxdbDBServiceName, influxdbRetentionPolicy);
         } else {

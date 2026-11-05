@@ -15,6 +15,9 @@ public class ScimGroup {
     private ScimMetaData meta;
 
      public static ScimGroup getFromResource(String representation) {
+        if (representation == null || representation.isEmpty()) {
+            return null;
+        }
         ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         try {
             return objectMapper.readValue(representation, ScimGroup.class);
